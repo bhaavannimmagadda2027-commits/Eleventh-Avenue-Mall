@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Architecture decisions
+- Keep mall storefront and sample product data separate from the single-screen shopping interface so category browsing and the universal demo cart share consistent records.
