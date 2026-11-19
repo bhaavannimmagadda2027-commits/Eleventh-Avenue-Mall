@@ -190,7 +190,7 @@ function produceGeo(p: Product): THREE.BufferGeometry {
   const main = p.colors[0]
   switch (p.shape) {
     case 'round': {
-      const g = new THREE.SphereGeometry(r, 16, 12)
+      const g = new THREE.SphereGeometry(r, 14, 10)
       if (p.id === 'onion') g.scale(1, 1.05, 1)
       if (p.id === 'potato') g.scale(1.25, 0.82, 0.95)
       if (p.id === 'apple' || p.id === 'pomegranate') g.scale(1, 0.92, 1)
@@ -266,8 +266,8 @@ function produceGeo(p: Product): THREE.BufferGeometry {
 }
 
 /** Puffed bag shape for chips, rice and atta. */
-function pillowGeo(w: number, h: number, d: number) {
-  const g = new THREE.BoxGeometry(w, h, d, 10, 12, 1)
+function pillowGeo(w: number, h: number, d: number, lite = false) {
+  const g = new THREE.BoxGeometry(w, h, d, lite ? 5 : 10, lite ? 6 : 12, 1)
   const pos = g.attributes.position
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
@@ -279,11 +279,11 @@ function pillowGeo(w: number, h: number, d: number) {
   return g.translate(0, h / 2, 0)
 }
 
-function bottleGeo(r: number, h: number) {
+function bottleGeo(r: number, h: number, seg = 20) {
   const pts = [
     [0, 0], [r * 0.92, 0], [r, h * 0.04], [r, h * 0.6], [r * 0.82, h * 0.74], [r * 0.42, h * 0.86], [r * 0.38, h * 0.92], [0, h * 0.92],
   ].map(([x, y]) => new THREE.Vector2(x, y))
-  return new THREE.LatheGeometry(pts, 20)
+  return new THREE.LatheGeometry(pts, seg)
 }
 
 function loafGeo(w: number, h: number, len: number) {
@@ -328,6 +328,8 @@ export function productParts(p: Product): Part[] {
   let parts: Part[] = []
   const [w, h, d] = p.dims
   const [col, accent] = p.colors
+  // background stock ("fx-") is drawn by the thousand, so it uses fewer segments
+  const lite = p.id.startsWith('fx-'), seg = lite ? 10 : 20
   const side = new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 })
   const extra = texturedParts(p, compact)
   if (isProduce(p)) parts = [{ geo: produceGeo(p), mat: produceMat }]
@@ -345,22 +347,22 @@ export function productParts(p: Product): Part[] {
       : [sideAcc, sideAcc, topMap, side, front, side]
     parts = [compact(geo, mats)]
   } else if (p.shape === 'pillow') {
-    const geo = pillowGeo(w, h, d)
+    const geo = pillowGeo(w, h, d, lite)
     const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * h) / w)), roughness: 0.32, metalness: 0.15 })
     parts = [compact(geo, [side, side, side, side, front, side])]
   } else if (p.shape === 'bottle') {
     const r = w / 2
     const body = new THREE.MeshStandardMaterial({ color: p.art === 'oil' ? '#F6E08A' : '#FAFAF7', roughness: 0.25, transparent: p.art === 'oil', opacity: p.art === 'oil' ? 0.85 : 1 })
-    const labelGeo = new THREE.CylinderGeometry(r * 1.01, r * 1.01, h * 0.38, 20, 1, true, Math.PI, Math.PI * 2).translate(0, h * 0.34, 0)
+    const labelGeo = new THREE.CylinderGeometry(r * 1.01, r * 1.01, h * 0.38, seg, 1, true, Math.PI, Math.PI * 2).translate(0, h * 0.34, 0)
     const label = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.38)), roughness: 0.4 })
-    const cap = new THREE.CylinderGeometry(r * 0.42, r * 0.42, h * 0.09, 20).translate(0, h * 0.955, 0)
-    parts = [{ geo: bottleGeo(r, h), mat: body }, { geo: labelGeo, mat: label }, { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.4 }) }]
+    const cap = new THREE.CylinderGeometry(r * 0.42, r * 0.42, h * 0.09, seg).translate(0, h * 0.955, 0)
+    parts = [{ geo: bottleGeo(r, h, seg), mat: body }, { geo: labelGeo, mat: label }, { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.4 }) }]
   } else if (p.shape === 'tub' || p.shape === 'jar') {
     const r = w / 2
     const tub = p.shape === 'tub'
-    const bodyGeo = new THREE.CylinderGeometry(r, tub ? r * 0.82 : r, h * 0.84, 20, 1, false, Math.PI, Math.PI * 2).translate(0, h * 0.42, 0)
+    const bodyGeo = new THREE.CylinderGeometry(r, tub ? r * 0.82 : r, h * 0.84, seg, 1, false, Math.PI, Math.PI * 2).translate(0, h * 0.42, 0)
     const wrap = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.84)), roughness: tub ? 0.4 : 0.2 })
-    const lidGeo = new THREE.CylinderGeometry(r * (tub ? 1.04 : 0.92), r * (tub ? 1.04 : 0.92), h * 0.16, 20).translate(0, h * 0.92, 0)
+    const lidGeo = new THREE.CylinderGeometry(r * (tub ? 1.04 : 0.92), r * (tub ? 1.04 : 0.92), h * 0.16, seg).translate(0, h * 0.92, 0)
     parts = [{ geo: bodyGeo, mat: [wrap, side, side] }, { geo: lidGeo, mat: new THREE.MeshStandardMaterial({ color: tub ? accent : '#E8B84A', roughness: 0.35, metalness: tub ? 0 : 0.4 }) }]
   } else if (p.shape === 'loaf') {
     const geo = loafGeo(w, h, d)
@@ -473,10 +475,10 @@ function solidGeo(p: Product): THREE.BufferGeometry {
     case 'lipstick': {
       const r = w / 2
       return merge([
-        paint(new THREE.CylinderGeometry(r, r, h * 0.55, 18).translate(0, h * 0.275, 0), c1),
-        paint(new THREE.CylinderGeometry(r * 0.8, r * 0.8, h * 0.12, 18).translate(0, h * 0.61, 0), '#1E1E1E'),
-        paint(new THREE.CylinderGeometry(r * 0.62, r * 0.62, h * 0.22, 20).translate(0, h * 0.78, 0), c0),
-        paint(new THREE.ConeGeometry(r * 0.62, h * 0.12, 20).rotateZ(0.5).translate(0, h * 0.93, 0), c0),
+        paint(new THREE.CylinderGeometry(r, r, h * 0.55, 12).translate(0, h * 0.275, 0), c1),
+        paint(new THREE.CylinderGeometry(r * 0.8, r * 0.8, h * 0.12, 12).translate(0, h * 0.61, 0), '#1E1E1E'),
+        paint(new THREE.CylinderGeometry(r * 0.62, r * 0.62, h * 0.22, 12).translate(0, h * 0.78, 0), c0),
+        paint(new THREE.ConeGeometry(r * 0.62, h * 0.12, 12).rotateZ(0.5).translate(0, h * 0.93, 0), c0),
       ])
     }
     case 'pencil': {
@@ -691,7 +693,7 @@ function texturedParts(p: Product, compactFn: typeof compact): Part[] | null {
   switch (p.shape) {
     case 'tube': {
       const r = w / 2, bodyH = h * 0.84
-      const g = new THREE.CylinderGeometry(r, r, bodyH, 28, 8, false, Math.PI, Math.PI * 2)
+      const g = new THREE.CylinderGeometry(r, r, bodyH, 18, 6, false, Math.PI, Math.PI * 2)
       const pos = g.attributes.position
       for (let i = 0; i < pos.count; i++) {
         const t = Math.min(1, Math.max(0, (pos.getY(i) + bodyH / 2) / bodyH))
@@ -701,7 +703,7 @@ function texturedParts(p: Product, compactFn: typeof compact): Part[] | null {
       g.computeVertexNormals()
       g.translate(0, h * 0.16 + bodyH / 2, 0)
       const label = new THREE.MeshStandardMaterial({ map: wrapTex(p, (Math.PI * r * 1.6) / bodyH), roughness: 0.35 })
-      const cap = new THREE.CylinderGeometry(r * 0.75, r * 0.82, h * 0.16, 20).translate(0, h * 0.08, 0)
+      const cap = new THREE.CylinderGeometry(r * 0.75, r * 0.82, h * 0.16, 14).translate(0, h * 0.08, 0)
       return [{ geo: g, mat: [label, side, side] }, { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.4 }) }]
     }
     case 'dropper': {

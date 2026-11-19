@@ -9,6 +9,9 @@ import { registerScreen } from '../../lib/adRotation'
 import { useMall } from '../../state/useMall'
 import { adTex, canvasTex, floorTex, inlayTex, rng, skyTex } from '../../lib/textures'
 import { productParts, tagTex, unitSize } from '../../lib/productArt'
+import { fillerFor } from '../../data/filler'
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
+import { onQuality, quality } from '../../lib/quality'
 import { M, basic, box, enableShadows, findTag, mat, mergeStatic, plane } from '../mall/build'
 import { font } from '../../styles/tokens'
 
@@ -22,23 +25,23 @@ const LED = new THREE.MeshBasicMaterial({ color: '#FFF6E2', toneMapped: false })
 
 const wallSignTex = (hall: Hall, text: string) =>
   canvasTex(`wsign-${hall.id}-${text}`, 1024, 128, (g, w, h) => {
-    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, w, h)
-    g.fillStyle = hall.theme.accent; g.fillRect(0, h - 10, w, 10)
-    g.fillStyle = hall.theme.signInk; g.textAlign = 'center'; g.textBaseline = 'middle'
-    let s = 62; g.font = F(600, s)
+    g.fillStyle = '#1D1E1B'; g.fillRect(0, 0, w, h)
+    g.fillStyle = hall.theme.accent; g.fillRect(0, h - 8, w, 8)
+    g.fillStyle = '#FBF8F1'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let s = 66; g.font = F(700, s)
     while (g.measureText(text).width > w * 0.9 && s > 30) { s -= 2; g.font = F(600, s) }
     g.fillText(text, w / 2, h / 2 - 2)
   })
 
 const hangTex = (hall: Hall, text: string, sub: string) =>
   canvasTex(`hang-${hall.id}-${text}`, 1024, 220, (g, w, h) => {
-    g.fillStyle = '#FBFAF6'; g.fillRect(0, 0, w, h)
+    g.fillStyle = '#1D1E1B'; g.fillRect(0, 0, w, h)
     g.fillStyle = hall.theme.accent; g.fillRect(0, 0, 14, h)
-    g.fillStyle = '#262626'; g.textBaseline = 'middle'
+    g.fillStyle = '#FBF8F1'; g.textBaseline = 'middle'
     let s = 78; g.font = F(600, s)
     while (g.measureText(text).width > w - 90 && s > 40) { s -= 2; g.font = F(600, s) }
     g.fillText(text, 60, h * 0.4)
-    g.fillStyle = '#777873'; g.font = F(400, 36); g.fillText(sub, 62, h * 0.76)
+    g.fillStyle = '#B9B6AE'; g.font = F(400, 36); g.fillText(sub, 62, h * 0.76)
   })
 
 const backWallTex = (hall: Hall) =>
@@ -62,20 +65,14 @@ const doorwayTex = () =>
     g.fillStyle = '#777873'; g.font = F(400, 24); g.fillText('Drive through to go back', w / 2, h * 0.28)
   })
 
-const mirrorTex = () =>
-  canvasTex('mirror', 256, 256, (g, w, h) => {
-    const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#F4F7F8'); gr.addColorStop(0.45, '#DCE4E6'); gr.addColorStop(0.5, '#F7FAFA'); gr.addColorStop(1, '#D3DBDD')
-    g.fillStyle = gr; g.fillRect(0, 0, w, h)
-  })
-
 /* ---------- fixtures (built in bay-local space: x along the bay, +z toward the aisle) ---------- */
 
-type Inst = { p: Product; mats: THREE.Matrix4[] }
+type Inst = { p: Product; mats: THREE.Matrix4[]; owners: string[] }
 type Ctx = { hall: Hall; insts: Inst[]; R: () => number; frame: THREE.Matrix4 }
 
 function instOf(insts: Inst[], p: Product) {
   let inst = insts.find((i) => i.p === p)
-  if (!inst) insts.push((inst = { p, mats: [] }))
+  if (!inst) insts.push((inst = { p, mats: [], owners: [] }))
   return inst
 }
 
@@ -90,6 +87,7 @@ function fillShelf(insts: Inst[], p: Product, bayW: number, y: number, zs: numbe
     for (let i = 0; i < used; i++) {
       const m = new THREE.Matrix4().compose(new THREE.Vector3(x0 + i * step, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (R() - 0.5) * 0.06, 0)), new THREE.Vector3(scale, scale, scale))
       inst.mats.push(m.premultiply(parent))
+      inst.owners.push(p.id)
     }
 }
 
@@ -102,35 +100,118 @@ function tag(bay: THREE.Group, p: Product, x: number, y: number, z: number, tilt
 
 const fitScale = (p: Product, room: number, max = 1.3) => Math.min(max, room / unitSize(p)[1])
 
+/**
+ * Background stock for a shelf: runs of made-up packs, two to five facings each, packed edge to edge
+ * and two or three deep, with the odd facing pulled back or sold through. Each run gets its own price tag.
+ */
+type MixOpts = { frame?: THREE.Matrix4; max?: number; gap?: number; rows?: number; tags?: boolean; block?: [number, number] }
+
+function fillMixed(c: Ctx, bay: THREE.Group, pool: Product[], owner: string, W: number, y: number, room: number, front: number, tagY: number, o: MixOpts = {}) {
+  const { frame = c.frame, max = 1.08, gap = 0.005, tags = true, block = [2, 5] } = o
+  const fits = pool.filter((q) => (room - 0.02) / unitSize(q)[1] >= 0.62)
+  if (!fits.length) return
+  const end = W / 2 - 0.03
+  let x = -W / 2 + 0.03
+  let last = -1
+  while (x < end - 0.06) {
+    let k = Math.floor(c.R() * fits.length)
+    if (k === last && fits.length > 1) k = (k + 1) % fits.length
+    last = k
+    const q = fits[k]
+    const [w, h, d] = unitSize(q)
+    const s = Math.min(max, (room - 0.02) / h)
+    const step = w * s + gap
+    const n = Math.min(Math.floor((end - x) / step), block[0] + Math.floor(c.R() * (block[1] - block[0] + 1)))
+    if (n < 1) break
+    const folded = q.shape === 'folded'
+    const stackable = (['box', 'jar', 'tub', 'tetra', 'block'].includes(q.shape) && h * s < 0.17) || folded
+    const tiers = stackable ? Math.max(1, Math.min(folded ? 6 : 3, Math.floor((room - 0.02) / (h * s)))) : 1
+    const rows = o.rows ?? (d * s < 0.085 ? 3 : 2)
+    const inst = instOf(c.insts, q)
+    for (let i = 0; i < n; i++)
+      for (let r = 0; r < rows; r++) {
+        // a few facings are sold through or pushed back, like a shelf mid-afternoon
+        if (r === 0 && c.R() < 0.07) continue
+        const z = front - (d * s) / 2 - r * d * s * 1.03 - (r === 0 ? c.R() * 0.02 : 0)
+        for (let t = 0; t < tiers; t++) {
+          const m = new THREE.Matrix4().compose(
+            new THREE.Vector3(x + i * step + (w * s) / 2, y + t * h * s, z),
+            new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (c.R() - 0.5) * 0.08, 0)),
+            new THREE.Vector3(s, s, s),
+          )
+          inst.mats.push(m.premultiply(frame))
+          inst.owners.push(owner)
+        }
+      }
+    if (tags) {
+      const t = plane(0.15, 0.06, tagMat(q), bay)
+      t.position.set(Math.max(-W / 2 + 0.09, Math.min(W / 2 - 0.09, x + (n * step) / 2)), tagY, front + 0.032)
+    }
+    x += n * step + Math.max(0.008, gap)
+  }
+}
+
+/** Flat packs (butter, paneer, biscuits) are stacked so a shelf never shows more air than stock. */
+const stacks = (p: Product, s: number, room: number) =>
+  ['box', 'block', 'eggs', 'tub', 'jar', 'tetra'].includes(p.shape) ? Math.max(1, Math.min(4, Math.floor((room - 0.02) / (unitSize(p)[1] * s)))) : 1
+
+const SHELF_EDGE = () => mat('#F7F6F2', { roughness: 0.4 })
+const GONDOLA_BACK = () => mat('#2E2F2B', { roughness: 0.7 })
+const GONDOLA_METAL = () => mat('#3A3B37', { roughness: 0.45, metalness: 0.5 })
+
+/** Grocery shelving: a dark back panel, six shelves, the featured product at eye level and packs everywhere else. */
 function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
-  box(W, 2.2, 0.04, mat('#F4F2EE', { roughness: 0.7 }), 0, 1.1, -D / 2 + 0.02, bay)
-  box(W, 0.12, D, mat('#E7E3DB'), 0, 0.06, 0, bay)
-  box(0.04, 2.25, D, M.oak(), -W / 2, 1.125, 0, bay)
-  box(W, 0.1, D * 0.3, M.oak(), 0, 2.27, -D / 2 + 0.15, bay)
-  const levels = run.fixture === 'bulk' ? [0.14, 0.66, 1.18] : [0.36, 0.82, 1.28, 1.74]
+  const bulk = run.fixture === 'bulk'
+  const top = 2.45
+  box(W, top, 0.04, GONDOLA_BACK(), 0, top / 2, -D / 2 + 0.02, bay)
+  box(W, 0.12, D, GONDOLA_METAL(), 0, 0.06, 0, bay)
+  box(0.035, top + 0.04, D - 0.06, GONDOLA_METAL(), -W / 2, (top + 0.04) / 2, -0.03, bay)
+  box(W, 0.18, 0.05, GONDOLA_METAL(), 0, top + 0.09, -D / 2 + 0.12, bay)
+  box(W - 0.06, 0.008, 0.02, LED, 0, top - 0.01, -D / 2 + 0.16, bay)
+  const levels = bulk ? [0.12, 0.64, 1.16, 1.68] : [0.12, 0.5, 0.88, 1.26, 1.64, 2.02]
+  const hero = bulk ? [1, 2] : [2, 3]
+  const pool = fillerFor(run.section)
+  const front = D / 2 - 0.06
   levels.forEach((y, k) => {
-    if (y > 0.2) box(W - 0.02, 0.028, D - 0.12, M.white(), 0, y - 0.014, 0.03, bay)
-    box(W - 0.06, 0.008, 0.012, LED, 0, y - 0.034, D / 2 - 0.05, bay)
-    tag(bay, p, 0, y - 0.075, D / 2 - 0.035)
-    const room = (levels[k + 1] ?? 2.2) - y - 0.06
-    const big = run.fixture === 'bulk'
-    // packs read a touch larger than life so labels are legible from the aisle
-    fillShelf(c.insts, p, W, y, big ? [0.12] : [0.18, -0.12], k === 1 || big ? 0.95 : 0.6 + c.R() * 0.3, c.frame, c.R, fitScale(p, room))
+    const room = Math.min(bulk ? 0.5 : 0.4, (levels[k + 1] ?? top) - y - 0.04)
+    if (y > 0.2) box(W - 0.02, 0.022, D - 0.1, M.white(), 0, y - 0.011, -0.01, bay)
+    box(W - 0.02, 0.05, 0.014, SHELF_EDGE(), 0, y - 0.03, front + 0.03, bay)
+    if (y > 0.2) box(W - 0.06, 0.006, 0.01, LED, 0, y - 0.026, front - 0.02, bay)
+    if (hero.includes(k) || !pool.length) {
+      tag(bay, p, 0, y - 0.03, front + 0.04)
+      const s = fitScale(p, room - 0.02)
+      const [w, , d] = unitSize(p)
+      const rows = d * s < 0.09 ? [0, 1, 2] : [0, 1]
+      for (let t = 0; t < stacks(p, s, room); t++)
+        fillShelf(c.insts, p, W - 0.04, y + t * unitSize(p)[1] * s, rows.map((r) => front - (d * s) / 2 - r * d * s * 1.03), 1, c.frame, c.R, s, Math.max(0.004, 0.02 - w * 0.05))
+    } else fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03)
   })
 }
 
+/** Glass-door chiller: five glass shelves, back-lit, stocked to the doors. */
 function chillerBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, last: boolean) {
   const W = run.bay, D = c.hall.depth
-  box(W, 2.2, 0.04, mat('#FFFFFF', { emissive: '#F2F7FA', emissiveIntensity: 0.55, roughness: 0.6 }), 0, 1.2, -D / 2 + 0.02, bay)
-  box(W, 0.3, D, mat('#E9ECEE', { roughness: 0.4 }), 0, 0.15, 0, bay)
-  box(W, 0.26, D, mat('#F4F5F6', { roughness: 0.4 }), 0, 2.43, 0, bay)
-  box(0.05, 2.56, D, M.alu(), -W / 2, 1.28, 0, bay)
-  if (last) box(0.05, 2.56, D, M.alu(), W / 2, 1.28, 0, bay)
-  ;[0.34, 0.8, 1.26, 1.72].forEach((y) => {
-    box(W - 0.06, 0.02, D - 0.16, mat('#F7F9FA', { roughness: 0.2 }), 0, y - 0.01, -0.02, bay)
-    tag(bay, p, 0, y - 0.05, D / 2 - 0.1)
-    fillShelf(c.insts, p, W - 0.08, y, [0.12, -0.14], 0.7 + c.R() * 0.3, c.frame, c.R, fitScale(p, 0.4))
+  box(W, 2.2, 0.04, mat('#FFFFFF', { emissive: '#F2F7FA', emissiveIntensity: 0.7, roughness: 0.6 }), 0, 1.2, -D / 2 + 0.02, bay)
+  box(W, 0.3, D, GONDOLA_METAL(), 0, 0.15, 0, bay)
+  box(W, 0.3, D, GONDOLA_METAL(), 0, 2.45, 0, bay)
+  box(W - 0.06, 0.01, 0.02, LED, 0, 2.29, D / 2 - 0.08, bay)
+  box(0.05, 2.6, D, GONDOLA_METAL(), -W / 2, 1.3, 0, bay)
+  if (last) box(0.05, 2.6, D, GONDOLA_METAL(), W / 2, 1.3, 0, bay)
+  const levels = [0.32, 0.7, 1.08, 1.46, 1.84]
+  const pool = fillerFor(run.section)
+  const front = D / 2 - 0.12
+  levels.forEach((y, k) => {
+    box(W - 0.06, 0.016, D - 0.18, mat('#F7F9FA', { roughness: 0.2 }), 0, y - 0.008, -0.03, bay)
+    box(W - 0.06, 0.04, 0.012, SHELF_EDGE(), 0, y - 0.02, front + 0.02, bay)
+    const room = (levels[k + 1] ?? 2.28) - y - 0.03
+    if (k === 2 || k === 3 || !pool.length) {
+      tag(bay, p, 0, y - 0.02, front + 0.03)
+      const s = fitScale(p, room - 0.02)
+      const d = unitSize(p)[2] * s
+      for (let t = 0; t < stacks(p, s, room); t++)
+        fillShelf(c.insts, p, W - 0.1, y + t * unitSize(p)[1] * s, [front - d / 2, front - d * 1.53, front - d * 2.56], 1, c.frame, c.R, s, 0.006)
+    } else fillMixed(c, bay, pool, p.id, W - 0.06, y, room, front, y - 0.02)
   })
   const door = plane(W - 0.06, 2.0, M.glass(), bay)
   door.position.set(0, 1.28, D / 2 - 0.01)
@@ -140,10 +221,10 @@ function chillerBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, last:
 
 function bakeryBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth, oak = M.oak()
-  box(W, 2.0, 0.04, mat('#E8DCC6', { roughness: 0.8 }), 0, 1.0, -D / 2 + 0.02, bay)
-  box(0.05, 2.0, D, oak, -W / 2, 1.0, 0, bay)
+  box(W, 2.2, 0.04, mat('#E8DCC6', { roughness: 0.8 }), 0, 1.1, -D / 2 + 0.02, bay)
+  box(0.05, 2.2, D, oak, -W / 2, 1.1, 0, bay)
   box(W, 0.4, D, oak, 0, 0.2, 0, bay)
-  ;[0.46, 0.98, 1.46].forEach((y, k) => {
+  ;[0.46, 0.88, 1.3, 1.72].forEach((y) => {
     const shelf = new THREE.Group()
     shelf.position.set(0, y, 0.02)
     shelf.rotation.x = 0.14
@@ -151,43 +232,52 @@ function bakeryBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
     box(W - 0.04, 0.03, D - 0.14, oak, 0, 0, 0, shelf)
     box(W - 0.04, 0.07, 0.025, oak, 0, 0.035, (D - 0.14) / 2, shelf)
     shelf.updateMatrix()
-    fillShelf(c.insts, p, W, 0.015, [0.13, -0.15], k === 1 ? 0.9 : 0.65, c.frame.clone().multiply(shelf.matrix), c.R, 1.15)
+    fillShelf(c.insts, p, W, 0.015, [0.24, 0.08, -0.08, -0.24], 0.95, c.frame.clone().multiply(shelf.matrix), c.R, 1.08)
     tag(bay, p, 0, y - 0.04, D / 2 - 0.05)
   })
 }
 
+/** Produce: three tiers of wooden crates on a stepped stand, each heaped into a low mound. */
 function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera: boolean) {
   const W = run.bay, D = c.hall.depth, R = c.R
-  const wood = mat('#BFA06E', { roughness: 0.85 }), dark = mat('#A6885A', { roughness: 0.85 })
-  box(W - 0.04, 0.5, D * 0.9, mat('#D9C5A5', { roughness: 0.7 }), 0, 0.25, -0.02, bay)
-  ;[[0.62, 0.2], [1.06, -0.2]].forEach(([y, z]) => {
+  const wood = mat('#B08F5E', { roughness: 0.85 }), dark = mat('#94754A', { roughness: 0.85 })
+  const stand = mat('#6E5537', { roughness: 0.8 })
+  box(W - 0.04, 0.48, 0.36, stand, 0, 0.24, 0.26, bay)
+  box(W - 0.04, 0.78, 0.3, stand, 0, 0.39, -0.04, bay)
+  box(W - 0.04, 1.08, 0.3, stand, 0, 0.54, -0.3, bay)
+  box(W, 1.9, 0.04, GONDOLA_BACK(), 0, 0.95, -D / 2 + 0.02, bay)
+  ;[[0.52, 0.27], [0.82, -0.02], [1.12, -0.29]].forEach(([y, z]) => {
     const crate = new THREE.Group()
     crate.position.set(0, y, z)
-    crate.rotation.x = 0.3
+    crate.rotation.x = 0.26
     bay.add(crate)
-    const cw = W - 0.1, cd = 0.48
+    const cw = W - 0.08, cd = 0.4
     box(cw, 0.03, cd, wood, 0, 0, 0, crate)
-    box(cw, 0.13, 0.025, dark, 0, 0.06, cd / 2, crate)
-    box(cw, 0.13, 0.025, dark, 0, 0.06, -cd / 2, crate)
-    box(0.025, 0.13, cd, dark, -cw / 2, 0.06, 0, crate)
-    box(0.025, 0.13, cd, dark, cw / 2, 0.06, 0, crate)
+    box(cw, 0.14, 0.025, dark, 0, 0.06, cd / 2, crate)
+    box(cw, 0.14, 0.025, dark, 0, 0.06, -cd / 2, crate)
+    box(0.025, 0.14, cd, dark, -cw / 2, 0.06, 0, crate)
+    box(0.025, 0.14, cd, dark, cw / 2, 0.06, 0, crate)
     const t = plane(0.3, 0.12, tagMat(p), crate)
     t.position.set(0, 0.07, cd / 2 + 0.016)
     crate.updateMatrix()
     const frame = c.frame.clone().multiply(crate.matrix)
     const [uw, uh, ud] = unitSize(p)
-    const nx = Math.max(1, Math.floor((cw - 0.04) / (uw * 1.02))), nz = Math.max(1, Math.floor((cd - 0.04) / (ud * 1.02)))
+    const pitch = 0.94
+    const nx = Math.max(1, Math.floor((cw - 0.03) / (uw * pitch))), nz = Math.max(1, Math.floor((cd - 0.03) / (ud * pitch)))
     const inst = instOf(c.insts, p)
-    for (let layer = 0; layer < 2; layer++)
-      for (let ix = 0; ix < nx; ix++)
+    for (let layer = 0; layer < 3; layer++)
+      for (let ix = 0; ix < nx + (layer ? 0 : 1); ix++)
         for (let iz = 0; iz < nz; iz++) {
-          if (layer && R() < 0.45) continue
-          const x = -cw / 2 + 0.02 + uw * 0.51 + ix * uw * 1.02 + (R() - 0.5) * uw * 0.1 + (layer ? uw * 0.5 : 0)
-          const zz = -cd / 2 + 0.02 + ud * 0.51 + iz * ud * 1.02 + (R() - 0.5) * ud * 0.1
-          if (Math.abs(x) > cw / 2 - uw * 0.4) continue
-          const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((R() - 0.5) * 0.4, R() * 6.28, (R() - 0.5) * 0.4))
-          const sc = 0.92 + R() * 0.16
-          inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0.015 + layer * uh * 0.75, zz), q, new THREE.Vector3(sc, sc, sc)).premultiply(frame))
+          const x = -cw / 2 + 0.015 + uw * 0.5 + ix * uw * pitch + (R() - 0.5) * uw * 0.14 + (layer % 2 ? uw * 0.47 : 0)
+          const zz = -cd / 2 + 0.015 + ud * 0.5 + iz * ud * pitch + (R() - 0.5) * ud * 0.14 + (layer % 2 ? ud * 0.3 : 0)
+          if (Math.abs(x) > cw / 2 - uw * 0.42 || Math.abs(zz) > cd / 2 - ud * 0.3) continue
+          // heap toward the middle so each crate reads as a mound
+          const edge = Math.max(Math.abs(x) / (cw / 2), Math.abs(zz) / (cd / 2))
+          if (layer === 1 && (edge > 0.86 || R() < 0.12)) continue
+          if (layer === 2 && (edge > 0.6 || R() < 0.3)) continue
+          const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((R() - 0.5) * 0.5, R() * 6.28, (R() - 0.5) * 0.5))
+          const sc = 0.9 + R() * 0.18
+          inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0.015 + layer * uh * 0.72, zz), q, new THREE.Vector3(sc, sc, sc)).premultiply(frame))
         }
   })
   if (camera) {
@@ -203,131 +293,174 @@ function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera:
   }
 }
 
-/** Beauty: light oak shelving, a softly backlit panel, glass shelves and a round mirror. */
+/** Place one unit of q in the bay, remembering which catalogue product a tap on it opens. */
+function put(c: Ctx, q: Product, owner: string, x: number, y: number, z: number, s = 1, yaw = (c.R() - 0.5) * 0.08, frame = c.frame) {
+  const inst = instOf(c.insts, q)
+  inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)), new THREE.Vector3(s, s, s)).premultiply(frame))
+  inst.owners.push(owner)
+}
+
+const pick = <T,>(c: Ctx, list: T[]) => list[Math.floor(c.R() * list.length)]
+
+/** Beauty: oak uprights, a softly backlit panel and five glass shelves, testers at eye level. */
 function vanityBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W, 2.3, 0.04, mat('#FBF5EF', { emissive: '#F7E9DE', emissiveIntensity: 0.5, roughness: 0.7 }), 0, 1.15, -D / 2 + 0.02, bay)
   box(0.05, 2.35, D * 0.75, M.oak(), -W / 2, 1.175, -D * 0.12, bay)
   box(W, 0.45, D * 0.8, mat('#EFE6DA', { roughness: 0.6 }), 0, 0.225, -D * 0.1, bay)
   box(W, 0.04, D * 0.8, M.oak(), 0, 0.47, -D * 0.1, bay)
-  const levels = [0.5, 0.92, 1.3]
+  box(W, 0.1, D * 0.6, M.oak(), 0, 2.25, -D * 0.2, bay)
+  box(W - 0.1, 0.008, 0.012, LED, 0, 2.195, D * 0.08, bay)
+  const levels = [0.5, 0.84, 1.18, 1.52, 1.86]
+  const pool = fillerFor(run.section)
+  const front = D * 0.15
   levels.forEach((y, k) => {
     if (k) box(W - 0.1, 0.014, D * 0.55, mat('#F2F6F7', { roughness: 0.1, metalness: 0.1 }), 0, y - 0.007, -D * 0.12, bay)
-    box(W - 0.14, 0.006, 0.01, LED, 0, y - 0.02, D * 0.15, bay)
-    tag(bay, p, 0, y - 0.045, D * 0.17)
-    fillShelf(c.insts, p, W - 0.1, y, [0.08, -0.12], k === 0 ? 0.9 : 0.7, c.frame, c.R, fitScale(p, 0.34, 1.6), 0.03)
+    box(W - 0.14, 0.006, 0.01, LED, 0, y - 0.02, front, bay)
+    const room = (levels[k + 1] ?? 2.19) - y - 0.03
+    if (k === 1 || k === 2 || !pool.length) {
+      tag(bay, p, 0, y - 0.045, D * 0.17)
+      const s = fitScale(p, room - 0.04, 1.5)
+      const d = unitSize(p)[2] * s
+      fillShelf(c.insts, p, W - 0.12, y, [front - d / 2 - 0.01, front - d * 1.7, front - d * 2.9], 1, c.frame, c.R, s, 0.012)
+    } else fillMixed(c, bay, pool, p.id, W - 0.1, y, room, front, y - 0.04, { max: 1.4, gap: 0.01, rows: 2 })
   })
-  const mirror = new THREE.Mesh(new THREE.CircleGeometry(0.26, 40), new THREE.MeshBasicMaterial({ map: mirrorTex() }))
-  mirror.position.set(0, 1.9, -D / 2 + 0.05)
-  bay.add(mirror)
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.265, 0.012, 8, 48), mat('#C9A76B', { roughness: 0.3, metalness: 0.6 }))
-  ring.position.copy(mirror.position)
-  bay.add(ring)
 }
 
-/** Fragrance: a cream counter with bottles grouped on top and a framed panel behind. */
+/** Fragrance: a cream counter lined with bottles, and three glass shelves on a framed panel behind. */
 function counterBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W - 0.1, 0.95, 0.62, mat('#F1E9DF', { roughness: 0.5 }), 0, 0.475, 0.02, bay)
   box(W - 0.06, 0.03, 0.66, M.oak(), 0, 0.965, 0.02, bay)
-  box(W - 0.3, 1.2, 0.04, mat('#FBF6F1', { emissive: '#F6E7DF', emissiveIntensity: 0.6 }), 0, 1.75, -D / 2 + 0.03, bay)
-  box(W - 0.26, 0.03, 0.05, M.oak(), 0, 2.36, -D / 2 + 0.04, bay)
-  box(W - 0.26, 0.03, 0.05, M.oak(), 0, 1.14, -D / 2 + 0.04, bay)
-  box(W - 0.5, 0.014, 0.24, mat('#F2F6F7', { roughness: 0.1, metalness: 0.1 }), 0, 1.593, -D / 2 + 0.16, bay)
-  box(W - 0.54, 0.006, 0.01, LED, 0, 1.58, -D / 2 + 0.275, bay)
+  box(W - 0.3, 1.3, 0.04, mat('#FBF6F1', { emissive: '#F6E7DF', emissiveIntensity: 0.6 }), 0, 1.75, -D / 2 + 0.03, bay)
+  box(W - 0.26, 0.03, 0.05, M.oak(), 0, 2.41, -D / 2 + 0.04, bay)
+  box(W - 0.26, 0.03, 0.05, M.oak(), 0, 1.09, -D / 2 + 0.04, bay)
+  const pool = fillerFor(run.section)
   tag(bay, p, 0, 0.9, 0.34)
-  fillShelf(c.insts, p, W - 0.4, 0.98, [0.16, -0.04], 0.8, c.frame, c.R, fitScale(p, 0.28, 1.7), 0.06)
-  fillShelf(c.insts, p, 0.6, 1.6, [-D / 2 + 0.2], 1, c.frame, c.R, 1.4, 0.04)
+  fillShelf(c.insts, p, W - 0.5, 0.98, [0.2], 1, c.frame, c.R, fitScale(p, 0.28, 1.7), 0.05)
+  fillMixed(c, bay, pool, p.id, W - 0.24, 0.98, 0.3, 0.06, 0.94, { max: 1.6, gap: 0.03, rows: 2, tags: false, block: [1, 3] })
+  const front = -D / 2 + 0.28
+  ;[1.25, 1.65, 2.05].forEach((y, k) => {
+    box(W - 0.5, 0.014, 0.24, mat('#F2F6F7', { roughness: 0.1, metalness: 0.1 }), 0, y - 0.007, -D / 2 + 0.16, bay)
+    box(W - 0.54, 0.006, 0.01, LED, 0, y - 0.02, front - 0.005, bay)
+    if (k === 1) fillShelf(c.insts, p, W - 0.56, y, [front - 0.05, front - 0.15], 1, c.frame, c.R, 1.4, 0.04)
+    else fillMixed(c, bay, pool, p.id, W - 0.52, y, 0.34, front, y - 0.04, { max: 1.5, gap: 0.03, rows: 2, tags: false, block: [1, 3] })
+  })
 }
 
-/** Electronics: a white demo table with products laid out, a shelf above and a cool backlit panel. */
+/** Electronics: a demo table, two shelves of boxed stock and the demo units above, on a cool backlit panel. */
 function techBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W - 0.08, 0.86, 0.66, mat('#FAFAF9', { roughness: 0.35 }), 0, 0.43, 0.05, bay)
   box(W - 0.06, 0.03, 0.7, mat('#C9CBCE', { roughness: 0.3, metalness: 0.6 }), 0, 0.875, 0.05, bay)
-  box(W, 2.3, 0.04, mat('#F2F5F7', { emissive: '#E6EEF4', emissiveIntensity: 0.5, roughness: 0.6 }), 0, 1.15, -D / 2 + 0.02, bay)
-  box(W - 0.1, 0.02, 0.28, M.white(), 0, 1.45, -D / 2 + 0.16, bay)
-  box(W - 0.14, 0.006, 0.01, LED, 0, 1.43, -D / 2 + 0.29, bay)
+  box(W, 2.4, 0.04, mat('#F2F5F7', { emissive: '#E6EEF4', emissiveIntensity: 0.5, roughness: 0.6 }), 0, 1.2, -D / 2 + 0.02, bay)
+  const pool = fillerFor(run.section)
+  const front = -D / 2 + 0.3
   tag(bay, p, 0, 0.82, 0.39)
-  tag(bay, p, 0, 1.4, -D / 2 + 0.305)
   const [w] = unitSize(p)
   const sc = Math.min(1.4, 0.34 / Math.max(w, 0.1))
-  fillShelf(c.insts, p, W - 0.1, 0.89, [0.12], w > 0.25 ? 0.5 : 0.75, c.frame, c.R, Math.max(1, sc), 0.12)
-  fillShelf(c.insts, p, W - 0.1, 1.46, [-D / 2 + 0.16], w > 0.25 ? 0.5 : 0.8, c.frame, c.R, Math.min(1.2, fitScale(p, 0.45, 1.2)), 0.08)
+  fillShelf(c.insts, p, W - 0.1, 0.89, [0.14], w > 0.25 ? 0.5 : 0.75, c.frame, c.R, Math.max(1, sc), 0.12)
+  // boxed stock behind the demo units, so the table reads as a counter in front of a full wall
+  if (pool.length) fillMixed(c, bay, pool, p.id, W - 0.12, 0.89, 0.3, -0.12, 0.85, { max: 1.1, gap: 0.006, rows: 1, tags: false })
+  ;[1.14, 1.52, 1.9].forEach((y, k) => {
+    box(W - 0.1, 0.02, 0.3, M.white(), 0, y - 0.01, -D / 2 + 0.16, bay)
+    box(W - 0.14, 0.006, 0.01, LED, 0, y - 0.025, front - 0.005, bay)
+    if (k === 1 || !pool.length) {
+      tag(bay, p, 0, y - 0.04, front + 0.01)
+      fillShelf(c.insts, p, W - 0.1, y, [front - unitSize(p)[2] * 0.6], w > 0.25 ? 0.6 : 0.9, c.frame, c.R, Math.min(1.2, fitScale(p, 0.34, 1.2)), 0.05)
+    } else fillMixed(c, bay, pool, p.id, W - 0.1, y, 0.36, front, y - 0.04, { max: 1.1, gap: 0.008 })
+  })
 }
 
-/** TV wall: a large set mounted on a dark panel above a low media console. */
+/** TV wall: a large set mounted on a dark panel above a console of soundbars and accessories. */
 function tvBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W, 2.4, 0.05, mat('#3A3D42', { roughness: 0.6 }), 0, 1.3, -D / 2 + 0.03, bay)
   box(W - 0.3, 0.4, 0.42, mat('#E9E5DE', { roughness: 0.5 }), 0, 0.2, -D / 2 + 0.27, bay)
   box(W - 0.28, 0.025, 0.44, M.oak(), 0, 0.41, -D / 2 + 0.27, bay)
   tag(bay, p, 0, 0.32, -D / 2 + 0.49)
-  const inst = instOf(c.insts, p)
-  inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(0, 0.95, -D / 2 + 0.09), new THREE.Quaternion(), new THREE.Vector3(1.4, 1.4, 1)).premultiply(c.frame))
+  put(c, p, p.id, 0, 0.95, -D / 2 + 0.09, 1.4, 0)
+  const pool = fillerFor(run.section)
+  if (pool.length) fillMixed(c, bay, pool, p.id, W - 0.36, 0.4225, 0.42, -D / 2 + 0.46, 0.3, { max: 1, gap: 0.04, rows: 1, tags: false, block: [1, 2] })
 }
 
-/** Kidswear: face-out arms on a pastel panel, garments hanging one behind another. */
+/** Kidswear: face-out arms on a pastel panel, one style per arm, sizes hanging one behind another. */
 function railBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W, 2.3, 0.04, mat('#F6EEE2', { roughness: 0.8 }), 0, 1.15, -D / 2 + 0.02, bay)
   box(0.05, 2.35, 0.08, M.oak(), -W / 2, 1.175, -D / 2 + 0.06, bay)
-  const [, h] = unitSize(p)
-  const inst = instOf(c.insts, p)
-  ;[[-0.3, 2.05], [0.3, 2.05], [0, 1.05]].forEach(([x, armY], k) => {
-    if (k === 2 && h > 0.5) return
+  const pool = fillerFor(run.section)
+  const short = pool.filter((q) => unitSize(q)[1] <= 0.45)
+  const tall = unitSize(p)[1] > 0.5
+  ;[[-0.33, 2.05], [0.33, 2.05], [-0.33, 1.08], [0.33, 1.08]].forEach(([x, armY], k) => {
+    const q = k < 2 ? (k === 1 && pool.length && c.R() < 0.5 ? pick(c, pool) : p) : tall || !short.length ? null : k === 2 && !tall && unitSize(p)[1] <= 0.45 ? p : pick(c, short)
+    if (!q) return
     box(0.02, 0.02, D * 0.75, M.alu(), x, armY, -D * 0.1, bay)
-    for (let i = 0; i < 4; i++) {
-      const z = 0.22 - i * 0.12
-      const y = armY - h - 0.03
-      inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (c.R() - 0.5) * 0.08, 0)), new THREE.Vector3(1, 1, 1)).premultiply(c.frame))
-    }
+    const h = unitSize(q)[1]
+    for (let i = 0; i < 7; i++) put(c, q, p.id, x, armY - h - 0.03, 0.22 - i * 0.075)
   })
   tag(bay, p, 0, 0.62, -D / 2 + 0.06)
 }
 
-/** Folded goods and accessories on a pale oak table with a shelf behind. */
+/** Folded goods and accessories: stacks on a pale oak table, three shelves behind. */
 function foldedBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
   box(W - 0.1, 0.72, 0.62, M.oak(), 0, 0.36, 0.06, bay)
-  box(W, 1.9, 0.04, mat('#F4EEE4', { roughness: 0.8 }), 0, 0.95, -D / 2 + 0.02, bay)
-  box(W - 0.1, 0.03, 0.26, M.oak(), 0, 1.35, -D / 2 + 0.15, bay)
+  box(W, 2.2, 0.04, mat('#F4EEE4', { roughness: 0.8 }), 0, 1.1, -D / 2 + 0.02, bay)
+  box(0.05, 2.25, 0.3, M.oak(), -W / 2, 1.125, -D / 2 + 0.15, bay)
   tag(bay, p, 0, 0.66, 0.38)
-  const [, h] = unitSize(p)
-  const stack = p.shape === 'folded' ? 4 : 1
-  for (let k = 0; k < stack; k++) fillShelf(c.insts, p, W - 0.2, 0.72 + k * h * 1.02, [0.16], 0.75, c.frame, c.R, 1, 0.06)
-  fillShelf(c.insts, p, W - 0.1, 1.365, [-D / 2 + 0.15], 0.8, c.frame, c.R, fitScale(p, 0.5, 1), 0.05)
+  const pool = fillerFor(run.section)
+  const [, h, d] = unitSize(p)
+  const stack = p.shape === 'folded' ? 5 : 1
+  for (let k = 0; k < stack; k++) fillShelf(c.insts, p, W - 0.2, 0.72 + k * h * 1.02, [0.37 - d / 2 - 0.02], 0.8, c.frame, c.R, 1, 0.05)
+  if (pool.length) fillMixed(c, bay, pool, p.id, W - 0.16, 0.72, 0.36, 0.37 - d - 0.06, 0.66, { max: 1, gap: 0.04, rows: 1, tags: false, block: [1, 2] })
+  const front = -D / 2 + 0.3
+  ;[1.0, 1.4, 1.8].forEach((y, k) => {
+    box(W - 0.1, 0.03, 0.28, M.oak(), 0, y - 0.015, -D / 2 + 0.16, bay)
+    if (k === 1 || !pool.length) fillShelf(c.insts, p, W - 0.1, y, [front - unitSize(p)[2] * 0.55], 0.85, c.frame, c.R, fitScale(p, 0.36, 1), 0.04)
+    else fillMixed(c, bay, pool, p.id, W - 0.1, y, 0.38, front, y - 0.04, { max: 1, gap: 0.03, rows: 1, block: [1, 3] })
+  })
 }
 
-/** Shoes: angled shelves on a wall, pairs facing the aisle. */
+/** Shoes: six angled shelves on a wall, pairs facing the aisle. */
 function shoeBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
-  box(W, 2.2, 0.04, mat('#F6EEE2', { roughness: 0.8 }), 0, 1.1, -D / 2 + 0.02, bay)
-  box(0.05, 2.25, D * 0.6, M.oak(), -W / 2, 1.125, -D * 0.2, bay)
-  ;[0.4, 0.8, 1.2, 1.6].forEach((y) => {
+  box(W, 2.3, 0.04, mat('#F6EEE2', { roughness: 0.8 }), 0, 1.15, -D / 2 + 0.02, bay)
+  box(0.05, 2.35, D * 0.6, M.oak(), -W / 2, 1.175, -D * 0.2, bay)
+  const pool = fillerFor(run.section)
+  ;[0.3, 0.62, 0.94, 1.26, 1.58, 1.9].forEach((y, k) => {
     const shelf = new THREE.Group()
     shelf.position.set(0, y, -D * 0.18)
     shelf.rotation.x = 0.22
     bay.add(shelf)
     box(W - 0.06, 0.02, D * 0.5, M.white(), 0, 0, 0, shelf)
     shelf.updateMatrix()
-    fillShelf(c.insts, p, W - 0.06, 0.01, [0], 0.8, c.frame.clone().multiply(shelf.matrix), c.R, 1.25, 0.08)
-    tag(bay, p, 0, y - 0.03, -D * 0.18 + D * 0.26, 0)
+    const frame = c.frame.clone().multiply(shelf.matrix)
+    if (k === 2 || k === 3 || !pool.length) {
+      fillShelf(c.insts, p, W - 0.06, 0.01, [0.06], 0.9, frame, c.R, 1.2, 0.05)
+      tag(bay, p, 0, y - 0.03, -D * 0.18 + D * 0.26, 0)
+    } else fillMixed(c, bay, pool, p.id, W - 0.06, 0.01, 0.3, D * 0.25 - 0.02, 0, { frame, max: 1.2, gap: 0.05, rows: 1, tags: false, block: [1, 3] })
   })
 }
 
-/** Home: an oak open shelf unit, linen back panel, products grouped with breathing room. */
+/** Home: an oak open shelf unit on a linen panel, generously but neatly stocked. */
 function homeBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
-  box(W, 2.2, 0.04, mat('#EEE6D8', { roughness: 0.95 }), 0, 1.1, -D / 2 + 0.02, bay)
-  box(0.05, 2.25, D * 0.8, M.wood(), -W / 2, 1.125, -D * 0.1, bay)
-  const levels = [0.08, 0.66, 1.24, 1.82]
+  box(W, 2.3, 0.04, mat('#EEE6D8', { roughness: 0.95 }), 0, 1.15, -D / 2 + 0.02, bay)
+  box(0.05, 2.35, D * 0.8, M.wood(), -W / 2, 1.175, -D * 0.1, bay)
+  const levels = [0.08, 0.52, 0.96, 1.4, 1.84]
+  const pool = fillerFor(run.section)
+  const front = D * 0.27
   levels.forEach((y, k) => {
     box(W - 0.04, 0.04, D * 0.75, M.oak(), 0, y - 0.02, -D * 0.1, bay)
-    if (k === 3) return
-    tag(bay, p, 0, y - 0.05, D * 0.28)
-    const room = levels[k + 1] - y - 0.06
-    fillShelf(c.insts, p, W - 0.14, y, [0.04], k === 1 ? 0.8 : 0.55, c.frame, c.R, fitScale(p, room, 1.1), 0.08)
+    const room = (levels[k + 1] ?? 2.28) - y - 0.04
+    if (k === 2 || !pool.length) {
+      tag(bay, p, 0, y - 0.05, D * 0.28)
+      const s = fitScale(p, room, 1.1)
+      const d = unitSize(p)[2] * s
+      for (let t = 0; t < stacks(p, s, room); t++)
+        fillShelf(c.insts, p, W - 0.14, y + t * unitSize(p)[1] * s, d < 0.2 ? [front - d / 2, front - d * 1.6] : [front - d / 2], 0.9, c.frame, c.R, s, 0.04)
+    } else fillMixed(c, bay, pool, p.id, W - 0.1, y, room, front, y - 0.05, { max: 1.1, gap: 0.035, rows: 2, block: [1, 3] })
   })
 }
 
@@ -338,17 +471,33 @@ function buildHall(hall: Hall) {
   const { ox, half, entranceZ, backZ, ceilY, theme } = hall
   const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
 
-  const floor = plane(half * 2, L, new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: theme.floor, roughness: 0.24 }), g)
+  // polished stone: a mirror under a mostly opaque floor gives soft reflections of the shelves and lights
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: new THREE.Color(theme.floor).offsetHSL(0.0, 0.06, -0.2), roughness: 0.22 })
+  const runnerMat = new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), roughness: 0.28 })
+  const floor = plane(half * 2, L, floorMat, g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(ox, 0, zc)
   floor.userData.noCast = true
-  const runner = plane(1.6, L, new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), roughness: 0.3 }), g)
+  const rw = Math.min(1024, Math.round(window.innerWidth * 0.6)), rh = Math.min(1024, Math.round(window.innerHeight * 0.6))
+  const mirror = new Reflector(new THREE.PlaneGeometry(half * 2, L), { textureWidth: rw, textureHeight: rh, clipBias: 0.003, color: 0x8c8c8c })
+  mirror.rotation.x = -Math.PI / 2
+  mirror.position.set(ox, -0.003, zc)
+  mirror.userData.noShadow = true
+  g.add(mirror)
+  const applyQuality = () => {
+    const on = quality.reflections
+    mirror.visible = on
+    for (const [m, o] of [[floorMat, 0.76], [runnerMat, 0.86]] as const) { m.transparent = on; m.opacity = on ? o : 1; m.needsUpdate = true }
+  }
+  applyQuality()
+  onQuality(applyQuality)
+  const runner = plane(1.6, L, runnerMat, g)
   runner.rotation.x = -Math.PI / 2
   runner.position.set(ox, 0.004, zc)
   runner.userData.noCast = true
 
   // walls catch soft bounced daylight so the store never reads as gloomy
-  const plaster = mat(theme.wall, { roughness: 0.9, emissive: theme.wallGlow, emissiveIntensity: 0.45 })
+  const plaster = mat(theme.wall, { roughness: 0.9, emissive: theme.wallGlow, emissiveIntensity: 0.12 })
   ;[-1, 1].forEach((s) => {
     const w = plane(L, ceilY, plaster, g)
     w.rotation.y = -s * Math.PI / 2
@@ -376,7 +525,7 @@ function buildHall(hall: Hall) {
 
   // ceiling: plaster with a long skylight over the aisle, white beams, linear lights
   ;[-1, 1].forEach((s) => {
-    const cl = plane(half - 1.5, L, mat('#FAF8F3', { roughness: 1, side: THREE.DoubleSide }), g)
+    const cl = plane(half - 1.5, L, mat('#E2D9CA', { roughness: 1, side: THREE.DoubleSide }), g)
     cl.rotation.x = Math.PI / 2
     cl.position.set(ox + s * (1.5 + (half - 1.5) / 2), ceilY, zc)
     cl.userData.noCast = true
@@ -397,6 +546,8 @@ function buildHall(hall: Hall) {
     ;[-1.4, 1.4].forEach((x) => box(0.01, ceilY - 4.1, 0.01, M.alu(), ox + x, (ceilY + 4.1) / 2, z, g))
   })
 
+  ;[-1, 1].forEach((s) => box(0.05, 0.56, L - 0.4, mat('#1D1E1B', { roughness: 0.6 }), ox + s * (half - 0.025), 2.93, zc, g).userData.noCast = true)
+
   // fixtures and products
   const insts: Inst[] = []
   const R = rng(91 + hall.ox)
@@ -406,7 +557,7 @@ function buildHall(hall: Hall) {
     const sw = Math.min(len - 0.3, 3.6)
     const ws = plane(sw, sw / 8, basic(wallSignTex(hall, run.sign)), g)
     ws.rotation.y = run.side < 0 ? Math.PI / 2 : -Math.PI / 2
-    ws.position.set(ox + run.side * (half - 0.02), 2.78, (run.z0 + zEnd) / 2)
+    ws.position.set(ox + run.side * (half - 0.05), 2.93, (run.z0 + zEnd) / 2)
     run.products.forEach((id, i) => {
       const p = PRODUCT_BY_ID[id]
       const pl = PLACE[id]
@@ -484,7 +635,9 @@ function buildHall(hall: Hall) {
         const col = new THREE.Color()
         inst.mats.forEach((_, i) => { col.setHSL(0, 0, 0.9 + R() * 0.1); im.setColorAt(i, col) })
       }
-      im.userData.productId = inst.p.id
+      // background packs open the product of the bay they sit in
+      im.userData.productId = inst.owners[0] ?? inst.p.id
+      if (inst.owners.length === inst.mats.length) im.userData.owners = inst.owners
       im.frustumCulled = false
       g.add(im)
     }
@@ -514,7 +667,11 @@ export function StoreInterior({ id }: { id: string }) {
     if (!t) return
     e.stopPropagation()
     if (t.adId) useMall.getState().open({ kind: 'ad', id: t.adId as string })
-    else if (t.productId) useMall.getState().showPreview(t.productId as string, [e.point.x, e.point.y, e.point.z])
+    else if (t.productId) {
+      const owners = t.owners as string[] | undefined
+      const id = (e.instanceId != null && owners?.[e.instanceId]) || (t.productId as string)
+      useMall.getState().showPreview(id, [e.point.x, e.point.y, e.point.z])
+    }
   }
   return <primitive object={group} onClick={onClick} />
 }

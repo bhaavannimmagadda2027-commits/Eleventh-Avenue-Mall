@@ -18,10 +18,11 @@ import { EntranceMat, Shoppers, SunRays } from './Ambience'
 import { StoreInterior } from '../store/StoreInterior'
 import { HALLS, HALL_IDS } from '../../data/storeLayout'
 import { useMall } from '../../state/useMall'
+import { setReflections } from '../../lib/quality'
 
 /** 11 am daylight: soft sky fill, a warm sun through the glass roof, gentle reflections. */
 const MOOD = {
-  neutral: { sky: '#FDFBF6', sun: '#FFF1DC' },
+  neutral: { sky: '#FDF8EE', sun: '#FFE6C4' },
   warm: { sky: '#FFF6EC', sun: '#FFE6C8' }, // beauty, home: a touch warmer
   cool: { sky: '#F6F9FD', sun: '#FBF7EF' }, // electronics: cooler, still daylight
 }
@@ -36,7 +37,7 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
   }, [loc, sun])
   return (
     <>
-      <hemisphereLight ref={sky} args={['#FDFBF6', '#CFC4B2', 0.85]} />
+      <hemisphereLight ref={sky} args={['#FDFBF6', '#BFB29C', 0.62]} />
       <directionalLight
         ref={sun}
         color="#FFF1DC"
@@ -93,7 +94,8 @@ function AdTicker() {
 
 /**
  * Keeps the mall smooth on modest phones and saves battery:
- * - if frames average slower than ~45 fps for two seconds, render at a lower pixel ratio (never below 1);
+ * - if frames average slower than ~45 fps for two seconds, render at a lower pixel ratio (never below 1),
+ *   then turn off floor reflections if that is not enough;
  * - while the checkout covers the whole screen, stop rendering the 3D scene altogether.
  */
 function PerfGovernor() {
@@ -107,6 +109,8 @@ function PerfGovernor() {
     if (a.t < 2) return
     const avg = a.t / a.n
     if (avg > 1 / 45 && a.dpr > 1) { a.dpr = Math.max(1, +(a.dpr - 0.25).toFixed(2)); setDpr(a.dpr) }
+    // already at the lowest pixel ratio and still slow: drop the floor reflections
+    else if (avg > 1 / 40) setReflections(false)
     a.t = 0; a.n = 0
   })
   useEffect(() => {
@@ -153,13 +157,13 @@ export function MallEnvironment() {
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       camera={{ fov: 62, near: 0.05, far: 260, position: [0, 3.9, 6.6] }}
       onCreated={({ gl, scene }) => {
-        gl.toneMapping = THREE.NeutralToneMapping
-        gl.toneMappingExposure = 0.92
+        gl.toneMapping = THREE.ACESFilmicToneMapping
+        gl.toneMappingExposure = 0.9
         scene.background = new THREE.Color('#EEF2F2')
         scene.fog = new THREE.Fog('#F1EEE7', 45, 120)
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-        scene.environmentIntensity = 0.35
+        scene.environmentIntensity = 0.5
       }}
     >
       <MallLighting sun={sun} />
