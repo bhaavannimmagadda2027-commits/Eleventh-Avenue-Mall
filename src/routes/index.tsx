@@ -30,6 +30,7 @@ import {
   getCategory,
   getProductsForCategory,
   products,
+  searchProducts,
   type MallProduct,
 } from "@/lib/mall-data";
 
@@ -73,13 +74,7 @@ function MallExperience() {
   const cartLines = Object.entries(cart).map(([productId, quantity]) => ({ productId, quantity }));
   const total = calculateCartTotal(cartLines);
   const itemCount = calculateCartCount(cartLines);
-  const searchResults = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return [];
-    return products.filter((product) =>
-      [product.name, product.brand, product.category].some((value) => value.toLowerCase().includes(query)),
-    );
-  }, [searchQuery]);
+  const searchResults = useMemo(() => searchProducts(searchQuery), [searchQuery]);
 
   function addToCart(product: MallProduct) {
     setCart((current) => ({ ...current, [product.id]: (current[product.id] ?? 0) + 1 }));
@@ -200,6 +195,7 @@ function MallExperience() {
       <aside className="architectural-panel" aria-label="Mall offer">
         <div className="panel-brandmark">EA<span>.</span></div>
         <span>THE LITTLE THINGS</span>
+        <img className="architectural-panel-screen" src={category.image} alt="" />
         <strong>A good day<br />starts somewhere.</strong>
         <button onClick={() => { setActiveCategory("home"); setSelectedProduct(products.find((item) => item.id === "linen-throw") ?? null); }}>
           Find your Sunday <ArrowRight aria-hidden="true" />
@@ -291,7 +287,9 @@ function MallExperience() {
   function changeCategory(direction: number) {
     const currentIndex = categories.findIndex((item) => item.id === activeCategory);
     const nextIndex = (currentIndex + direction + categories.length) % categories.length;
-    setActiveCategory(categories[nextIndex].id);
+    const nextCategory = categories[nextIndex];
+    if (!nextCategory) return;
+    setActiveCategory(nextCategory.id);
     setSelectedProduct(null);
   }
 }

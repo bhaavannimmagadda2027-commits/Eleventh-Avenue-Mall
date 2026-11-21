@@ -5,6 +5,7 @@ import {
   calculateCartTotal,
   getCategory,
   getProductsForCategory,
+  searchProducts,
 } from "@/lib/mall-data";
 
 describe("mall shopping data", () => {
@@ -14,6 +15,10 @@ describe("mall shopping data", () => {
 
   it("filters product discovery to the selected store", () => {
     expect(getProductsForCategory("beauty").every((product) => product.category === "beauty")).toBe(true);
+  });
+
+  it("finds products by common shopper terms", () => {
+    expect(searchProducts("headphones").map((product) => product.id)).toContain("studio-headphones");
   });
 
   it("calculates a shared cart total and item count across merchants", () => {

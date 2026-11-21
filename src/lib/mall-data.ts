@@ -18,6 +18,7 @@ export type MallProduct = {
   description: string;
   image: string;
   accent: string;
+  searchTerms: string[];
 };
 
 export const categories: MallCategory[] = [
@@ -77,6 +78,16 @@ export const categories: MallCategory[] = [
   },
 ];
 
+const defaultCategory: MallCategory = {
+  id: "grocery",
+  name: "Grocery",
+  aisle: "FRESH MARKET",
+  merchant: "Market & Vine",
+  image: "/mall-products/fresh-produce.jpg",
+  environment: "fresh-market",
+  description: "Good things, gathered fresh.",
+};
+
 export const products: MallProduct[] = [
   {
     id: "market-basket",
@@ -88,6 +99,7 @@ export const products: MallProduct[] = [
     description: "A colorful selection of today's freshest seasonal produce.",
     image: "/mall-products/fresh-produce.jpg",
     accent: "produce",
+    searchTerms: ["fruit", "vegetables", "produce", "fresh food"],
   },
   {
     id: "daily-ritual",
@@ -99,6 +111,7 @@ export const products: MallProduct[] = [
     description: "A gentle, everyday facial cleanser with a soft botanical finish.",
     image: "/mall-products/beauty.jpg",
     accent: "beauty",
+    searchTerms: ["face wash", "cleanser", "skincare", "skin care"],
   },
   {
     id: "studio-headphones",
@@ -110,6 +123,7 @@ export const products: MallProduct[] = [
     description: "Immersive sound, thoughtful design, and all-day comfort.",
     image: "/mall-products/electronics.jpg",
     accent: "electronics",
+    searchTerms: ["headphones", "audio", "earphones", "wireless headphones"],
   },
   {
     id: "weekend-shirt",
@@ -121,6 +135,7 @@ export const products: MallProduct[] = [
     description: "An easy, beautifully made layer for days out and about.",
     image: "/mall-products/fashion.jpg",
     accent: "fashion",
+    searchTerms: ["clothes", "clothing", "shirt", "style"],
   },
   {
     id: "little-explorer",
@@ -132,6 +147,7 @@ export const products: MallProduct[] = [
     description: "A sweet, hands-on activity kit for little adventures.",
     image: "/mall-products/kids.jpg",
     accent: "kids",
+    searchTerms: ["toys", "activities", "children", "play"],
   },
   {
     id: "linen-throw",
@@ -143,6 +159,7 @@ export const products: MallProduct[] = [
     description: "Relaxed, breathable linen in a lovely soft natural weave.",
     image: "/mall-products/home.jpg",
     accent: "home",
+    searchTerms: ["linen", "blanket", "decor", "bedroom"],
   },
   {
     id: "market-loaf",
@@ -154,6 +171,7 @@ export const products: MallProduct[] = [
     description: "A golden, slow-fermented country loaf from the neighborhood oven.",
     image: "/mall-products/dining.jpg",
     accent: "bakery",
+    searchTerms: ["bread", "bakery", "sourdough", "food"],
   },
 ];
 
@@ -161,8 +179,26 @@ export function getProductsForCategory(categoryId: string) {
   return products.filter((product) => product.category === categoryId);
 }
 
+export function searchProducts(query: string) {
+  const searchTerm = query.trim().toLowerCase();
+  if (!searchTerm) return [];
+
+  return products.filter((product) => {
+    const category = getCategory(product.category);
+    return [
+      product.name,
+      product.brand,
+      product.category,
+      product.description,
+      category.name,
+      category.aisle,
+      ...product.searchTerms,
+    ].some((value) => value.toLowerCase().includes(searchTerm));
+  });
+}
+
 export function getCategory(categoryId: string) {
-  return categories.find((category) => category.id === categoryId) ?? categories[0];
+  return categories.find((category) => category.id === categoryId) ?? defaultCategory;
 }
 
 export type CartLine = { productId: string; quantity: number };
