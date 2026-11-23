@@ -8,12 +8,18 @@ import { STORE_BY_ID } from '../../data/stores'
 import { drive, readSteer, reduceMotion } from '../../lib/input'
 import { makeProductObject } from '../../lib/productArt'
 import { INTERIORS, activeCart, cartCount, currentMall, inr, toPay, useMall, type Location } from '../../state/useMall'
-import { buildNeuCart } from './NeuCart'
+import type { CartLine } from '../../state/useMall'
+import { BED_Y, buildNeuCart } from './NeuCart'
 
 const CAM_H = 2.2 // eye height behind the cart
 const CART_AHEAD = 2.3 // cart distance in front of the camera
 const PITCH = -0.26
 const ATRIUM_PITCH = -0.17 // look up a little in the tall hall, so the galleries and roof stay in frame
+const PHONE_CAM_H = 2.6 // portrait: look down into the basket
+const PHONE_PITCH = -0.3
+const PHONE_ATRIUM_PITCH = -0.24
+const PHONE_LIFT = 0.11 // portrait: shift the picture up so the cart clears the joystick and cart bar
+const WIDE_LIFT = 0.09 // landscape: just enough to keep the cart's display on screen
 const LANE = 4.6 // clear walking lanes either side of the atrium axis
 const CROSS_Z = [2, -11.6, -21, -40.5, -53, -63] // where the atrium axis is free to cross
 
@@ -34,16 +40,27 @@ type Flight = { o: THREE.Object3D; from: THREE.Vector3; slot: THREE.Vector3; t: 
 // basket slots in cart-local space: 3 × 3 per layer, three layers
 const SLOTS = (() => {
   const a: THREE.Vector3[] = []
-  for (let l = 0; l < 3; l++) for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) a.push(new THREE.Vector3(-0.26 + c * 0.26 + (l % 2) * 0.05, 0.44 + l * 0.15, -0.3 + r * 0.27))
+  for (let l = 0; l < 3; l++) for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) a.push(new THREE.Vector3(-0.26 + c * 0.26 + (l % 2) * 0.05, BED_Y + 0.01 + l * 0.13, -0.3 + r * 0.27))
   return a
 })()
 
+/** Which units sit in the basket: one of every product first, then repeats, up to the basket's capacity. */
+function basketUnits(lines: CartLine[]) {
+  const units: string[] = []
+  for (let round = 0; units.length < SLOTS.length; round++) {
+    const next = lines.filter((l) => l.qty > round)
+    if (!next.length) break
+    for (const l of next) if (units.length < SLOTS.length) units.push(l.productId)
+  }
+  return units
+}
+
 function basketObject(id: string) {
   const p = PRODUCT_BY_ID[id]
-  const o = makeProductObject(p, isProduce(p) ? 'pile' : 'one')
+  const o = makeProductObject(p, 'one') // one object per unit, so the basket never overstates the count
   const b = new THREE.Box3().setFromObject(o)
   const s = b.getSize(new THREE.Vector3())
-  const k = Math.min(1.6, 0.28 / Math.max(s.x, s.z), 0.34 / s.y)
+  const k = Math.min(isProduce(p) ? 2.6 : 1.6, 0.28 / Math.max(s.x, s.z), 0.34 / s.y)
   o.scale.setScalar(k)
   return o
 }
@@ -64,11 +81,8 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
   // basket contents and console follow the cart (rebuilt when nothing is mid-flight)
   const rebuildBasket = useMemo(() => () => {
     const lines = activeCart(useMall.getState())
-    cart.drawConsole(cartCount(lines), inr(toPay(useMall.getState())))
     while (cart.items.children.length) cart.items.remove(cart.items.children[0])
-    const units: string[] = []
-    lines.forEach((l) => { for (let i = 0; i < Math.min(l.qty, 3); i++) units.push(l.productId) })
-    units.slice(0, SLOTS.length).forEach((id, i) => {
+    basketUnits(lines).forEach((id, i) => {
       const o = basketObject(id)
       o.position.copy(SLOTS[i])
       o.rotation.y = ((i * 37) % 10) / 10 - 0.5
@@ -76,12 +90,26 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
       cart.items.add(o)
     })
   }, [cart])
-  useEffect(() => useMall.subscribe((s, p) => { if ((activeCart(s) !== activeCart(p) || s.useCoins !== p.useCoins) && !flights.current.length) rebuildBasket() }), [rebuildBasket])
+  useEffect(() => {
+    rebuildBasket()
+    return useMall.subscribe((s, p) => { if (activeCart(s) !== activeCart(p) && !flights.current.length) rebuildBasket() })
+  }, [rebuildBasket])
+
+  // the console always shows the live cart, even while a product is still flying in
+  useEffect(() => {
+    let last = ''
+    const sync = () => {
+      const s = useMall.getState(), count = cartCount(activeCart(s)), total = inr(toPay(s)), key = `${count}|${total}`
+      if (key !== last) { last = key; cart.drawConsole(count, total) }
+    }
+    sync()
+    return useMall.subscribe(sync)
+  }, [cart])
 
   // a product was added from a shelf: fly it into the next free basket slot
   useEffect(() => useMall.subscribe((s, p) => {
     if (!s.flight || s.flight === p.flight) return
-    const units = activeCart(s).reduce((a, l) => a + Math.min(l.qty, 3), 0)
+    const units = basketUnits(activeCart(s)).length
     const o = basketObject(s.flight.productId)
     const from = new THREE.Vector3(...s.flight.from)
     o.position.copy(from)
@@ -171,7 +199,7 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
   useFrame((state, rawDt) => {
     const dt = import.meta.env.DEV && devDt.fixed ? devDt.fixed : Math.min(0.05, rawDt)
     const cam = camera as THREE.PerspectiveCamera
-    const fov = state.size.width / state.size.height < 0.8 ? 74 : 55
+    const fov = state.size.width / state.size.height < 0.8 ? 74 : 62
     if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix() }
     const m = mv.current
     cartPose.x = m.x; cartPose.z = m.z; cartPose.yaw = m.yaw
@@ -253,8 +281,16 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
       }
     }
 
-    const follow = new THREE.Vector3(m.x, CAM_H, m.z)
-    const restPitch = HALLS[st.location]?.atrium ? ATRIUM_PITCH : PITCH
+    const portrait = state.size.width / state.size.height < 0.8
+    const atrium = !!HALLS[st.location]?.atrium
+    const follow = new THREE.Vector3(m.x, portrait ? PHONE_CAM_H : CAM_H, m.z)
+    const restPitch = portrait ? (atrium ? PHONE_ATRIUM_PITCH : PHONE_PITCH) : atrium ? ATRIUM_PITCH : PITCH
+    // an off-centre view keeps verticals straight while moving the cart up the screen
+    const lift = view === 'mall' ? (portrait ? PHONE_LIFT : WIDE_LIFT) * ease(enter.current.t) : 0
+    const { width: vw, height: vh } = state.size, shift = Math.round(lift * vh)
+    if (shift !== (cam.view?.enabled ? cam.view.offsetY : 0) || (shift && (cam.view?.fullWidth !== vw || cam.view?.fullHeight !== vh))) {
+      if (shift) cam.setViewOffset(vw, vh, 0, shift, vw, vh); else cam.clearViewOffset()
+    }
     let pos = follow, yaw = m.yaw, pitch = restPitch
     if (view === 'landing') {
       const t = state.clock.elapsedTime

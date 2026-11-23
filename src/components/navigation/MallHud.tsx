@@ -193,7 +193,8 @@ export function MallHud() {
       <WaypointPill />
 
       <div className="absolute bottom-[calc(8px+env(safe-area-inset-bottom))] left-2 flex flex-col gap-2 md:bottom-6 md:left-6 md:gap-6">
-        <Minimap />
+        {/* on phones the map sits up top, so the cart's display stays in view */}
+        <div className="max-md:fixed max-md:left-2 max-md:top-[calc(64px+env(safe-area-inset-top))]"><Minimap /></div>
         <div className="pointer-events-auto md:pl-6"><CartJoystick /></div>
       </div>
 

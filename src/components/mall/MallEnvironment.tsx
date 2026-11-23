@@ -23,9 +23,9 @@ import { setReflections } from '../../lib/quality'
 
 /** 11 am daylight: soft sky fill, a warm sun through the glass roof, gentle reflections. */
 const MOOD = {
-  neutral: { sky: '#FFE6C4', sun: '#FFCF96' },
-  warm: { sky: '#FFE2C2', sun: '#FFC893' }, // beauty, home: a touch warmer
-  cool: { sky: '#FFEEDB', sun: '#FFE0BC' }, // electronics: a little cooler
+  neutral: { sky: '#FFF8EC', sun: '#FFF0DA' },
+  warm: { sky: '#FFF4E6', sun: '#FFEACF' }, // beauty, home: a touch warmer
+  cool: { sky: '#F8F8F4', sun: '#FFF6E8' }, // electronics: a little cooler
 }
 
 function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | null> }) {
@@ -38,17 +38,17 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
   }, [loc, sun])
   return (
     <>
-      <hemisphereLight ref={sky} args={['#FFDDB0', '#4A3524', 0.46]} />
+      <hemisphereLight ref={sky} args={['#FFF8EC', '#CDBBA2', 0.95]} />
       <directionalLight
         ref={sun}
-        color="#FFCF96"
-        intensity={1.5}
+        color="#FFF0DA"
+        intensity={1.9}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
         shadow-normalBias={0.03}
         shadow-radius={3}
-        shadow-intensity={0.72}
+        shadow-intensity={0.42}
         shadow-camera-left={-16}
         shadow-camera-right={16}
         shadow-camera-top={20}
@@ -56,7 +56,7 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
         shadow-camera-near={1}
         shadow-camera-far={70}
       />
-      <directionalLight color="#FFD9A8" intensity={0.3} position={[-8, 10, -20]} />
+      <directionalLight color="#F3EEFF" intensity={0.35} position={[-8, 10, -20]} />
     </>
   )
 }
@@ -65,14 +65,14 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
 function Locations() {
   const loc = useMall((s) => s.location)
   const root = useRef<THREE.Group>(null)
-  // printed signs and facades ignore scene lights, so give them the same warm evening cast
+  // printed signs and facades ignore scene lights, so give them the same soft daylight cast
   useLayoutEffect(() => {
     const seen = new Set<THREE.Material>()
     root.current?.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined
       if (!m || Array.isArray(m) || seen.has(m) || !m.isMeshBasicMaterial || !m.map || !m.fog || !m.toneMapped) return
       seen.add(m)
-      m.color.set('#C8AE8E')
+      m.color.set('#F7F2E9')
     })
   }, [])
   return (
@@ -172,12 +172,12 @@ export function MallEnvironment() {
       camera={{ fov: 62, near: 0.05, far: 260, position: [0, 3.9, 6.6] }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 0.94
-        scene.background = new THREE.Color('#BFD6E6')
-        scene.fog = new THREE.Fog('#C9A67C', 42, 118)
+        gl.toneMappingExposure = 1.02
+        scene.background = new THREE.Color('#DCEBF3')
+        scene.fog = new THREE.Fog('#F4ECDF', 55, 150)
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-        scene.environmentIntensity = 0.34
+        scene.environmentIntensity = 0.62
       }}
     >
       <MallLighting sun={sun} />

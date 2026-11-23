@@ -13,18 +13,18 @@ function buildArchitecture() {
   const W = L.shopX + 0.6 // outer half-width
 
   // floor: large polished tiles + warm stone bands along the atrium edge
-  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), color: '#B5A18A', roughness: 0.34, metalness: 0.02 }), g)
+  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), color: '#EFE5D6', roughness: 0.28, metalness: 0.02 }), g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(0, 0, ZC)
   floor.userData.noCast = true
   ;[-1, 1].forEach((s) => {
-    const band = plane(0.7, LEN, new THREE.MeshStandardMaterial({ map: inlayTex([1, LEN / 0.7]), color: '#8F7A62', roughness: 0.22 }), g)
+    const band = plane(0.7, LEN, new THREE.MeshStandardMaterial({ map: inlayTex([1, LEN / 0.7]), color: '#D8C8AF', roughness: 0.22 }), g)
     band.rotation.x = -Math.PI / 2
     band.position.set(s * (L.voidHalf + 0.15), 0.004, ZC)
     band.userData.noCast = true
   })
 
-  const stone = mat('#BBA78C', { roughness: 0.42 }), plaster = mat('#4A3B30', { roughness: 0.8 }), alu = M.alu(), white = mat('#D9CDBB', { roughness: 0.45 }), oak = mat('#A98452', { roughness: 0.5 })
+  const stone = mat('#EFE8DC', { roughness: 0.42 }), plaster = mat('#F6F1E8', { roughness: 0.8 }), alu = M.alu(), white = mat('#F7F3EC', { roughness: 0.45 }), oak = mat('#D9C5A5', { roughness: 0.5 })
   const led = new THREE.MeshBasicMaterial({ color: '#FFDDA6', toneMapped: false })
 
   ;[-1, 1].forEach((s) => {
@@ -53,7 +53,7 @@ function buildArchitecture() {
     const wall = plane(LEN, L.eaveY - 8.4, plaster, g)
     wall.rotation.y = -s * Math.PI / 2
     wall.position.set(s * L.shopX, 8.4 + (L.eaveY - 8.4) / 2, ZC)
-    const ceil = plane(W - L.voidHalf, LEN, mat('#33291F', { roughness: 0.8, side: THREE.DoubleSide }), g)
+    const ceil = plane(W - L.voidHalf, LEN, mat('#F6F1E8', { roughness: 0.8, side: THREE.DoubleSide }), g)
     ceil.rotation.x = Math.PI / 2
     ceil.position.set(s * (L.voidHalf + (W - L.voidHalf) / 2), L.eaveY, ZC)
     ceil.userData.noCast = true

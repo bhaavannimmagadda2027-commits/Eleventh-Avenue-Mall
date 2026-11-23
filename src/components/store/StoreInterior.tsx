@@ -19,6 +19,8 @@ import { font } from '../../styles/tokens'
 const F = (w: number, px: number) => `${w} ${px}px ${font.family}`
 const tagMats = new Map<string, THREE.MeshBasicMaterial>()
 const tagMat = (p: Product) => tagMats.get(p.id) ?? tagMats.set(p.id, new THREE.MeshBasicMaterial({ map: tagTex(p) })).get(p.id)!
+const STOCK_BLOCK = 6 // metres of hall per instanced block
+const MIRROR_STOCK_RANGE = 11 // metres
 const REC = new THREE.MeshBasicMaterial({ color: '#E5484D', toneMapped: false })
 const LED = new THREE.MeshBasicMaterial({ color: '#FFF6E2', toneMapped: false })
 
@@ -157,8 +159,8 @@ const stacks = (p: Product, s: number, room: number) =>
   ['box', 'block', 'eggs', 'tub', 'jar', 'tetra'].includes(p.shape) ? Math.max(1, Math.min(4, Math.floor((room - 0.02) / (unitSize(p)[1] * s)))) : 1
 
 const SHELF_EDGE = () => mat('#F7F6F2', { roughness: 0.4 })
-const GONDOLA_BACK = () => mat('#2E2F2B', { roughness: 0.7 })
-const GONDOLA_METAL = () => mat('#3A3B37', { roughness: 0.45, metalness: 0.5 })
+const GONDOLA_BACK = () => mat('#EFE7DA', { roughness: 0.62 })
+const GONDOLA_METAL = () => mat('#D8CDBB', { roughness: 0.34, metalness: 0.28 })
 
 /** Grocery shelving: a dark back panel, six shelves, the featured product at eye level and packs everywhere else. */
 function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
@@ -387,7 +389,7 @@ function techBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
 /** TV wall: a large set mounted on a dark panel above a console of soundbars and accessories. */
 function tvBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const W = run.bay, D = c.hall.depth
-  box(W, 2.4, 0.05, mat('#3A3D42', { roughness: 0.6 }), 0, 1.3, -D / 2 + 0.03, bay)
+  box(W, 2.4, 0.05, mat('#E6E3DC', { roughness: 0.4 }), 0, 1.3, -D / 2 + 0.03, bay)
   box(W - 0.3, 0.4, 0.42, mat('#E9E5DE', { roughness: 0.5 }), 0, 0.2, -D / 2 + 0.27, bay)
   box(W - 0.28, 0.025, 0.44, M.oak(), 0, 0.41, -D / 2 + 0.27, bay)
   tag(bay, p, 0, 0.32, -D / 2 + 0.49)
@@ -535,8 +537,8 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
   const up = new THREE.Group()
   g.add(up)
   const outer = half + 2.2, eave = 10.4, rise = 3.2
-  const stone = mat('#7A6650', { roughness: 0.6 }), dark = mat('#2B231B', { roughness: 0.6 })
-  const steel = mat('#3A3A38', { roughness: 0.45, metalness: 0.5 })
+  const stone = mat('#F2EBDF', { roughness: 0.48 }), dark = mat('#C8AE88', { roughness: 0.5 })
+  const steel = mat('#C9CBCC', { roughness: 0.3, metalness: 0.7 })
   const levels = [
     { y: 4.4, edge: half, names: { [-1]: ['WESTSIDE', 'TITAN', 'ZUDIO', 'FASHION'], [1]: ['FASHION', 'TANISHQ', 'CROMA', 'WESTSIDE'] } as Record<number, string[]> },
     { y: 7.5, edge: half + 0.6, names: { [-1]: ['HOME', 'BEAUTY', 'KIDS', 'FOOTWEAR'], [1]: ['BEAUTY', 'WATCHES', 'HOME', 'KIDS'] } as Record<number, string[]> },
@@ -577,7 +579,7 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
   box(0.2, 0.22, L, dark, ox, eave + rise, zc, up)
 
   // upper end walls, with the next department signed on the far one
-  const endWall = mat('#55432F', { roughness: 0.75 })
+  const endWall = mat('#F4EDE2', { roughness: 0.7 })
   ;[backZ, entranceZ].forEach((z) => {
     const w = plane(outer * 2, eave + rise - 4.4, endWall, up)
     w.rotation.y = z === backZ ? 0 : Math.PI
@@ -713,14 +715,14 @@ function buildHall(hall: Hall) {
   const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
 
   // polished stone: a mirror under a mostly opaque floor gives soft reflections of the shelves and lights
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: '#B5A18A', roughness: 0.36 })
-  const runnerMat = new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), color: '#A08A70', roughness: 0.38 })
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: '#EFE5D6', roughness: 0.28 })
+  const runnerMat = new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), color: '#E2D4BF', roughness: 0.3 })
   const floor = plane(half * 2, L, floorMat, g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(ox, 0, zc)
   floor.userData.noCast = true
   const rw = Math.min(1024, Math.round(window.innerWidth * 0.6)), rh = Math.min(1024, Math.round(window.innerHeight * 0.6))
-  const mirror = new Reflector(new THREE.PlaneGeometry(half * 2, L), { textureWidth: rw, textureHeight: rh, clipBias: 0.003, color: 0x8c8c8c })
+  const mirror = new Reflector(new THREE.PlaneGeometry(half * 2, L), { textureWidth: rw, textureHeight: rh, clipBias: 0.003, color: 0xa8a49d })
   mirror.rotation.x = -Math.PI / 2
   mirror.position.set(ox, -0.003, zc)
   mirror.userData.noShadow = true
@@ -728,17 +730,26 @@ function buildHall(hall: Hall) {
   const applyQuality = () => {
     const on = quality.reflections
     mirror.visible = on
-    for (const [m, o] of [[floorMat, 0.76], [runnerMat, 0.86]] as const) { m.transparent = on; m.opacity = on ? o : 1; m.needsUpdate = true }
+    for (const [m, o] of [[floorMat, 0.9], [runnerMat, 0.94]] as const) { m.transparent = on; m.opacity = on ? o : 1; m.needsUpdate = true }
   }
   applyQuality()
   onQuality(applyQuality)
+  // The mirror redraws the scene, so it only redraws products close enough for their reflection to read.
+  const stock: THREE.InstancedMesh[] = []
+  const drawMirror = mirror.onBeforeRender
+  mirror.onBeforeRender = (renderer, scene, camera, ...rest) => {
+    const hidden = stock.filter((im) => im.visible && im.boundingSphere!.center.distanceTo(camera.position) > MIRROR_STOCK_RANGE)
+    hidden.forEach((im) => { im.visible = false })
+    drawMirror.call(mirror, renderer, scene, camera, ...rest)
+    hidden.forEach((im) => { im.visible = true })
+  }
   const runner = plane(1.6, L, runnerMat, g)
   runner.rotation.x = -Math.PI / 2
   runner.position.set(ox, 0.004, zc)
   runner.userData.noCast = true
 
   // walls catch soft bounced daylight so the store never reads as gloomy
-  const plaster = mat('#' + new THREE.Color(theme.wall).multiplyScalar(0.2).getHexString(), { roughness: 0.75 })
+  const plaster = mat(theme.wall, { roughness: 0.72 })
   const wallH = hall.atrium ? 4.4 : ceilY
   ;[-1, 1].forEach((s) => {
     const w = plane(L, wallH, plaster, g)
@@ -769,7 +780,7 @@ function buildHall(hall: Hall) {
   if (hall.atrium) buildAtrium(g, hall)
   else {
   ;[-1, 1].forEach((s) => {
-    const cl = plane(half - 1.5, L, mat('#2F261E', { roughness: 0.8, side: THREE.DoubleSide }), g)
+    const cl = plane(half - 1.5, L, mat('#F6F1E8', { roughness: 0.8, side: THREE.DoubleSide }), g)
     cl.rotation.x = Math.PI / 2
     cl.position.set(ox + s * (1.5 + (half - 1.5) / 2), ceilY, zc)
     cl.userData.noCast = true
@@ -791,7 +802,7 @@ function buildHall(hall: Hall) {
   })
   }
 
-  ;[-1, 1].forEach((s) => box(0.05, 0.56, L - 0.4, mat('#1D1E1B', { roughness: 0.6 }), ox + s * (half - 0.025), 2.93, zc, g).userData.noCast = true)
+  ;[-1, 1].forEach((s) => box(0.05, 0.56, L - 0.4, mat('#C8AE88', { roughness: 0.5 }), ox + s * (half - 0.025), 2.93, zc, g).userData.noCast = true)
 
   // fixtures and products
   const insts: Inst[] = []
@@ -879,19 +890,29 @@ function buildHall(hall: Hall) {
   }
 
   // instanced product displays: one draw per product part
+  // Stock is grouped into blocks along the hall, so blocks outside the view are skipped.
+  const col = new THREE.Color()
   for (const inst of insts) {
-    for (const part of productParts(inst.p)) {
-      const im = new THREE.InstancedMesh(part.geo, part.mat, inst.mats.length)
-      inst.mats.forEach((m, i) => im.setMatrixAt(i, m))
-      if (isProduce(inst.p)) {
-        const col = new THREE.Color()
-        inst.mats.forEach((_, i) => { col.setHSL(0, 0, 0.9 + R() * 0.1); im.setColorAt(i, col) })
+    const blocks = new Map<string, number[]>()
+    inst.mats.forEach((m, i) => {
+      const e = m.elements, k = `${Math.sign(Math.round(e[12] - ox))}|${Math.floor(e[14] / STOCK_BLOCK)}`
+      const b = blocks.get(k)
+      if (b) b.push(i); else blocks.set(k, [i])
+    })
+    const perUnit = inst.owners.length === inst.mats.length
+    for (const idx of blocks.values()) {
+      const tints = isProduce(inst.p) ? idx.map(() => 0.9 + R() * 0.1) : null
+      for (const part of productParts(inst.p)) {
+        const im = new THREE.InstancedMesh(part.geo, part.mat, idx.length)
+        idx.forEach((source, i) => im.setMatrixAt(i, inst.mats[source]))
+        tints?.forEach((l, i) => im.setColorAt(i, col.setHSL(0, 0, l)))
+        // background packs open the product of the bay they sit in
+        im.userData.productId = (perUnit ? inst.owners[idx[0]] : inst.owners[0]) ?? inst.p.id
+        if (perUnit) im.userData.owners = idx.map((source) => inst.owners[source])
+        im.computeBoundingSphere()
+        stock.push(im)
+        g.add(im)
       }
-      // background packs open the product of the bay they sit in
-      im.userData.productId = inst.owners[0] ?? inst.p.id
-      if (inst.owners.length === inst.mats.length) im.userData.owners = inst.owners
-      im.frustumCulled = false
-      g.add(im)
     }
   }
 

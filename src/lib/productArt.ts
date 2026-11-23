@@ -190,7 +190,7 @@ function produceGeo(p: Product): THREE.BufferGeometry {
   const main = p.colors[0]
   switch (p.shape) {
     case 'round': {
-      const g = new THREE.SphereGeometry(r, 14, 10)
+      const g = new THREE.SphereGeometry(r, 11, 7)
       if (p.id === 'onion') g.scale(1, 1.05, 1)
       if (p.id === 'potato') g.scale(1.25, 0.82, 0.95)
       if (p.id === 'apple' || p.id === 'pomegranate') g.scale(1, 0.92, 1)
@@ -200,7 +200,7 @@ function produceGeo(p: Product): THREE.BufferGeometry {
       return g
     }
     case 'capsicum': {
-      const g = new THREE.SphereGeometry(r, 18, 14)
+      const g = new THREE.SphereGeometry(r, 12, 8)
       const pos = g.attributes.position
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i)
@@ -227,7 +227,7 @@ function produceGeo(p: Product): THREE.BufferGeometry {
     case 'spinach': {
       const leaves: THREE.BufferGeometry[] = []
       for (let i = 0; i < 7; i++) {
-        const l = new THREE.SphereGeometry(r * 0.5, 10, 6).scale(1, 0.12, 0.55)
+        const l = new THREE.SphereGeometry(r * 0.5, 7, 4).scale(1, 0.12, 0.55)
         l.translate(r * 0.45, 0, 0)
         l.rotateZ(0.25 + R() * 0.3)
         l.rotateY((i / 7) * 0.9 - 0.45)
@@ -245,9 +245,9 @@ function produceGeo(p: Product): THREE.BufferGeometry {
     }
     case 'broccoli': {
       const parts: THREE.BufferGeometry[] = [paint(new THREE.CylinderGeometry(r * 0.22, r * 0.3, r * 0.9, 8).translate(0, r * 0.45, 0), '#7FA35A')]
-      for (let i = 0; i < 11; i++) {
+      for (let i = 0; i < 7; i++) {
         const a = R() * Math.PI * 2, d = R() * r * 0.55
-        parts.push(paint(new THREE.IcosahedronGeometry(r * (0.32 + R() * 0.12), 1).translate(Math.cos(a) * d, r * 0.95 + R() * r * 0.25, Math.sin(a) * d), p.colors[i % 2]))
+        parts.push(paint(new THREE.IcosahedronGeometry(r * (0.38 + R() * 0.12), 1).translate(Math.cos(a) * d, r * 0.95 + R() * r * 0.25, Math.sin(a) * d), p.colors[i % 2]))
       }
       return merge(parts)
     }
@@ -255,7 +255,7 @@ function produceGeo(p: Product): THREE.BufferGeometry {
       const parts: THREE.BufferGeometry[] = []
       for (let i = 0; i < 5; i++) {
         const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.03, 0), new THREE.Vector3(0.1, 0.0, (i - 2) * 0.018), new THREE.Vector3(0.18, 0.06, (i - 2) * 0.03))
-        const t = new THREE.TubeGeometry(curve, 10, 0.017, 7, false)
+        const t = new THREE.TubeGeometry(curve, 6, 0.017, 5, false)
         paint(t, (_y, x) => (x > 0.165 || x < 0.012 ? '#6E5A2A' : p.colors[i % 2]))
         parts.push(t)
       }

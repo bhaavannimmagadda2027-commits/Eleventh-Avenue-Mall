@@ -26,6 +26,9 @@ function slab(shape: THREE.Shape, depth: number, bevel: number, m: THREE.Materia
   return new THREE.Mesh(g, m)
 }
 
+/** Height of the basket liner that products rest on. */
+export const BED_Y = 0.66
+
 export type NeuCartModel = {
   root: THREE.Group // moves with the shopper
   body: THREE.Group // suspension / celebration movement
@@ -95,9 +98,10 @@ export function buildNeuCart(): NeuCartModel {
   const back = front.clone()
   back.position.z = 0.51
   ;[sideL, sideR, front, back].forEach((m) => { m.userData.noShadow = true; body.add(m) })
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.02), new THREE.MeshStandardMaterial({ color: '#6F7276', roughness: 0.45, metalness: 0.5 }))
+  // a raised, pale liner keeps products up near the rim, where the driving camera can see them
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.02), new THREE.MeshStandardMaterial({ color: '#F1E8DA', roughness: 0.62 }))
   floor.rotation.x = -Math.PI / 2
-  floor.position.y = y0 + 0.01
+  floor.position.y = BED_Y
   body.add(floor)
   const rim = slab(roundRect(1.08, 1.22, 0.24, [0.84, 0.98, 0.14]), 0.07, 0.02, shell)
   rim.position.y = y0 + H
@@ -124,7 +128,7 @@ export function buildNeuCart(): NeuCartModel {
   con.position.set(0, y0 + H - 0.16, 0.6)
   body.add(con)
   const canvas = document.createElement('canvas')
-  canvas.width = 512; canvas.height = 112
+  canvas.width = 768; canvas.height = 168
   const ctx = canvas.getContext('2d')!
   const ct = new THREE.CanvasTexture(canvas)
   ct.colorSpace = THREE.SRGBColorSpace
@@ -151,19 +155,24 @@ export function buildNeuCart(): NeuCartModel {
   })
 
   const drawConsole = (count: number, total: string) => {
-    const w = 512, h = 112
+    const w = canvas.width, h = canvas.height
     ctx.clearRect(0, 0, w, h)
-    ctx.fillStyle = '#0C1020'; rr(ctx, 0, 0, w, h, 26); ctx.fill()
+    ctx.fillStyle = '#FBF8F2'; rr(ctx, 0, 0, w, h, 36); ctx.fill()
     ctx.textBaseline = 'middle'
-    // cart glyph
-    ctx.strokeStyle = '#5AA9FF'; ctx.fillStyle = '#5AA9FF'; ctx.lineWidth = 6; ctx.lineJoin = 'round'
-    ctx.beginPath(); ctx.moveTo(30, 34); ctx.lineTo(44, 34); ctx.lineTo(54, 70); ctx.lineTo(92, 70); ctx.lineTo(100, 44); ctx.lineTo(48, 44); ctx.stroke()
-    ctx.beginPath(); ctx.arc(60, 84, 6, 0, 7); ctx.arc(88, 84, 6, 0, 7); ctx.fill()
-    ctx.font = `600 52px ${font.family}`; ctx.fillText(String(count), 118, h / 2 + 2)
-    const nw = ctx.measureText(String(count)).width
-    ctx.fillStyle = '#C8D4E8'; ctx.font = `500 24px ${font.family}`; ctx.fillText('Items', 118 + nw + 14, h / 2 + 8)
-    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'right'; ctx.font = `600 38px ${font.family}`
-    ctx.fillText(total, w - 26, h / 2 + 2)
+    ctx.fillStyle = '#7665B5'; ctx.font = `600 84px ${font.family}`
+    const n = count.toLocaleString('en-IN')
+    ctx.fillText(n, 36, h / 2 + 4)
+    const nw = ctx.measureText(n).width
+    ctx.fillStyle = '#55524C'; ctx.font = `500 36px ${font.family}`
+    const unit = count === 1 ? 'item' : 'items'
+    ctx.fillText(unit, 36 + nw + 16, h / 2 + 14)
+    const left = 36 + nw + 16 + ctx.measureText(unit).width + 28
+    // long totals shrink to fit instead of running into the count
+    let size = 68
+    ctx.font = `600 ${size}px ${font.family}`
+    while (size > 32 && ctx.measureText(total).width > w - 36 - left) { size -= 2; ctx.font = `600 ${size}px ${font.family}` }
+    ctx.fillStyle = '#1F1E1B'; ctx.textAlign = 'right'
+    ctx.fillText(total, w - 36, h / 2 + 4)
     ctx.textAlign = 'left'
     ct.needsUpdate = true
   }
