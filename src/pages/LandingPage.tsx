@@ -91,7 +91,7 @@ function TaglineReveal({ root }: { root: React.RefObject<HTMLDivElement | null> 
     return () => io.disconnect()
   }, [reduced, root])
   return (
-    <section className="bg-black px-4 py-24 md:py-32" aria-label="Our promise">
+    <section className="bg-cream px-4 py-24 md:py-32" aria-label="Our promise">
       <h2 ref={box} className="heading-4 md:heading-1 mx-auto max-w-[680px] md:max-w-[860px]">
         {lines.map((l) => (
           <span key={l} className="block">
@@ -207,8 +207,8 @@ export function LandingPage() {
       </AnimatePresence>
 
       <div ref={scroller} className="no-scrollbar absolute inset-0 overflow-y-auto overflow-x-hidden">
-        <header ref={hero} className="relative flex min-h-full flex-col justify-end bg-black/50 px-4 pb-6 pt-32 md:justify-center md:bg-black/60 md:pb-24">
-          <div className="mx-auto w-full max-w-5xl max-md:rounded-3xl max-md:bg-black/60 max-md:p-4 max-md:backdrop-blur-md">
+        <header ref={hero} className="relative flex min-h-full flex-col justify-end px-4 pb-4 pt-32 md:px-8 md:pb-8">
+          <div className="glass w-full max-w-[744px] rounded-3xl p-4 md:p-8">
             <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.8, ease: EASE }} className="heading-4 md:heading-1 hero-text w-fit max-w-[680px] pb-1">
               Walk the whole mall<br />without leaving home
             </motion.h1>
@@ -226,7 +226,7 @@ export function LandingPage() {
         </header>
 
         <main id="main" className="bg-bg">
-          <section aria-label="Stores in the mall" className="overflow-hidden bg-black py-4">
+          <section aria-label="Stores in the mall" className="overflow-hidden bg-cream py-4">
             <p className="caption-5 no-scrollbar flex gap-6 overflow-x-auto whitespace-nowrap px-4 text-ink-2 md:justify-center">
               {mall.stores.slice(0, 10).map((s) => <span key={s.id} className="title-4">{s.name}</span>)}
             </p>
@@ -303,14 +303,14 @@ export function LandingPage() {
             </div>
           </Reveal>
 
-          <Reveal className="bg-black px-4 py-24 text-center">
+          <Reveal className="bg-cream px-4 py-24 text-center">
             <h2 className="heading-4 md:heading-2 mx-auto max-w-[680px] [text-wrap:balance]">The doors are open</h2>
             <p className="body-3 mx-auto mt-2 max-w-[480px] text-ink-2">No account, no download. Your cart is waiting in the lobby.</p>
             <PrimaryCta onClick={start} className="mt-6 w-full sm:w-auto" />
           </Reveal>
         </main>
 
-        <footer className="caption-5 bg-black px-4 pb-8 text-center text-ink-3">Prices, stock and orders are sample data. No payment is taken.</footer>
+        <footer className="caption-5 bg-cream px-4 pb-8 text-center text-ink-3">Prices, stock and orders are sample data. No payment is taken.</footer>
       </div>
     </motion.div>
   )

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { L, addRect } from '../../data/layout'
-import { bannerTex, exteriorTex, floorTex, inlayTex, skyTex } from '../../lib/textures'
+import { exteriorTex, floorTex, inlayTex, skyTex } from '../../lib/textures'
 import { M, basic, box, enableShadows, mat, plane, mergeStatic } from './build'
 
 const LEN = L.entranceZ - L.endZ
@@ -13,7 +13,7 @@ function buildArchitecture() {
   const W = L.shopX + 0.6 // outer half-width
 
   // floor: large polished tiles + warm stone bands along the atrium edge
-  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), color: '#EFE5D6', roughness: 0.28, metalness: 0.02 }), g)
+  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), color: '#F6ECDD', roughness: 0.2, metalness: 0.02 }), g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(0, 0, ZC)
   floor.userData.noCast = true
@@ -24,7 +24,7 @@ function buildArchitecture() {
     band.userData.noCast = true
   })
 
-  const stone = mat('#EFE8DC', { roughness: 0.42 }), plaster = mat('#F6F1E8', { roughness: 0.8 }), alu = M.alu(), white = mat('#F7F3EC', { roughness: 0.45 }), oak = mat('#D9C5A5', { roughness: 0.5 })
+  const stone = mat('#EBDCC6', { roughness: 0.46 }), plaster = mat('#F3E8D8', { roughness: 0.82 }), alu = M.alu(), white = mat('#F7F3EC', { roughness: 0.45 }), oak = mat('#D9C5A5', { roughness: 0.5 })
   const led = new THREE.MeshBasicMaterial({ color: '#FFDDA6', toneMapped: false })
 
   ;[-1, 1].forEach((s) => {
@@ -53,7 +53,7 @@ function buildArchitecture() {
     const wall = plane(LEN, L.eaveY - 8.4, plaster, g)
     wall.rotation.y = -s * Math.PI / 2
     wall.position.set(s * L.shopX, 8.4 + (L.eaveY - 8.4) / 2, ZC)
-    const ceil = plane(W - L.voidHalf, LEN, mat('#F6F1E8', { roughness: 0.8, side: THREE.DoubleSide }), g)
+    const ceil = plane(W - L.voidHalf, LEN, mat('#F5ECDF', { roughness: 0.8, side: THREE.DoubleSide }), g)
     ceil.rotation.x = Math.PI / 2
     ceil.position.set(s * (L.voidHalf + (W - L.voidHalf) / 2), L.eaveY, ZC)
     ceil.userData.noCast = true
@@ -79,19 +79,24 @@ function buildArchitecture() {
     gl.position.set((s * L.voidHalf) / 2, L.eaveY + rise / 2, ZC)
     gl.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), -s * ang)
     gl.userData.noShadow = true
-    for (const f of [0.33, 0.66]) {
-      const p = box(0.08, 0.1, LEN, white, s * L.voidHalf * (1 - f), L.eaveY + rise * f + 0.02, ZC, g)
+    for (const f of [0.2, 0.4, 0.6, 0.8]) {
+      const p = box(0.09, 0.12, LEN, white, s * L.voidHalf * (1 - f), L.eaveY + rise * f + 0.02, ZC, g)
       p.userData.noReceive = true
     }
   })
   for (let z = L.entranceZ; z >= L.endZ; z -= 3) {
     ;[-1, 1].forEach((s) => {
-      const r = box(slope, 0.2, 0.12, white, (s * L.voidHalf) / 2, L.eaveY + rise / 2 - 0.08, z, g)
+      const r = box(slope, 0.34, 0.16, white, (s * L.voidHalf) / 2, L.eaveY + rise / 2 - 0.08, z, g)
       r.rotation.z = -s * ang
       r.userData.noReceive = true
     })
   }
-  box(0.18, 0.22, LEN, white, 0, L.ridgeY - 0.06, ZC, g)
+  box(0.3, 0.36, LEN, white, 0, L.ridgeY - 0.1, ZC, g)
+  // open tie beams across the atrium, as in a timber-and-glass market hall
+  for (let z = L.entranceZ - 4; z >= L.endZ; z -= 9) {
+    box(L.voidHalf * 2, 0.22, 0.18, white, 0, L.eaveY + 0.1, z, g).userData.noReceive = true
+    box(0.12, rise, 0.12, white, 0, L.eaveY + rise / 2, z, g).userData.noReceive = true
+  }
 
   // sky dome seen through the glass
   const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 24, 12), new THREE.MeshBasicMaterial({ map: skyTex(), side: THREE.BackSide, fog: false, depthWrite: false }))
@@ -104,8 +109,8 @@ function buildArchitecture() {
     { z: L.entranceZ, face: Math.PI },
     { z: L.endZ, face: 0 },
   ].forEach(({ z, face }) => {
-    const outside = plane(W * 2.2, L.eaveY + 2, basic(exteriorTex(), { fog: false }), g)
-    outside.position.set(0, (L.eaveY + 2) / 2 - 0.4, z + (face ? 1.2 : -1.2))
+    const outside = plane(W * 2.2, L.ridgeY + 1, basic(exteriorTex(), { fog: false }), g)
+    outside.position.set(0, (L.ridgeY + 1) / 2 - 0.4, z + (face ? 1.2 : -1.2))
     outside.rotation.y = face
     outside.userData.noShadow = true
     const gls = plane(W * 2, L.ridgeY, M.glass(), g)
@@ -114,11 +119,6 @@ function buildArchitecture() {
     for (let x = -W; x <= W + 0.01; x += (W * 2) / 8) box(0.1, L.ridgeY, 0.14, alu, x, L.ridgeY / 2, z, g)
     for (const y of [3.2, 7.6, L.eaveY]) box(W * 2, 0.1, 0.14, alu, 0, y, z, g)
   })
-
-  // tall banner hanging in the atrium
-  const banner = plane(3.2, 5.12, basic(bannerTex(), { side: THREE.DoubleSide, fog: false }), g)
-  banner.position.set(0, 9.3, -19)
-  banner.userData.noCast = true
 
   enableShadows(g)
   mergeStatic(g)

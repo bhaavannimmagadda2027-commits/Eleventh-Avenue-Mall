@@ -9,7 +9,7 @@ import { box, mat } from './build'
 export function SunRays() {
   const group = useMemo(() => {
     const g = new THREE.Group()
-    const m = new THREE.MeshBasicMaterial({ map: raysTex(), transparent: true, opacity: 0.09, depthWrite: false, side: THREE.DoubleSide, fog: false })
+    const m = new THREE.MeshBasicMaterial({ map: raysTex(), transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide, fog: false })
     ;[[-2.5, -3], [2.2, -15], [-1.5, -29], [3, -43], [-2.8, -57]].forEach(([x, z]) => {
       const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 13), m)
       p.position.set(x, 6.2, z)
@@ -64,8 +64,8 @@ export function Shoppers() {
     const spec: [number, number, number, number, string, string, string][] = [
       [-3.9, 2, -60, 0.55, '#E8E2D6', '#C48A62', '#5B6470'],
       [3.8, -62, 0, 0.5, '#9DB0C3', '#A86F4D', '#3F4652'],
-      [8.8, -8, -66, 0.45, '#D8C3A5', '#D9A27C', '#6B5E52'],
-      [-8.9, -60, -2, 0.5, '#B9C7B4', '#8D5A3C', '#45484F'],
+      [9.5, -8, -66, 0.45, '#D8C3A5', '#D9A27C', '#6B5E52'],
+      [-9.5, -60, -2, 0.5, '#B9C7B4', '#8D5A3C', '#45484F'],
       [-4.4, -40, -18, 0.42, '#F1ECE3', '#C99372', '#7B6E62'],
       [4.2, -20, -52, 0.5, '#C9A99A', '#B07A55', '#3D4148'],
     ]

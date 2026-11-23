@@ -9,7 +9,7 @@ export const leafTex = () =>
   canvasTex('leaves', 256, 256, (g, w, h) => {
     g.clearRect(0, 0, w, h)
     const R = rng(17)
-    const greens = ['#6E8B69', '#7C9877', '#8FA889', '#5D7A58', '#9AB08F']
+    const greens = ['#4F8440', '#659A4E', '#7DAE5F', '#3F7337', '#92BC70']
     for (let i = 0; i < 150; i++) {
       const a = R() * Math.PI * 2, d = Math.sqrt(R()) * w * 0.42
       const x = w / 2 + Math.cos(a) * d, y = h / 2 + Math.sin(a) * d
@@ -93,9 +93,8 @@ export function Greenery() {
       addRect({ x0: -2.75, x1: 2.75, z0: z - 1.3, z1: z + 2.1 })
     })
     // trees along the atrium edge, benches in the gaps
-    ;[-20, -40, -58].forEach((z, i) => tree(g, leaves, (i % 2 ? 1 : -1) * 6.2, z, 3.6, 0.6, R))
-    ;[-40, -20, -58].forEach((z, i) => tree(g, leaves, (i % 2 ? -1 : 1) * 6.2, z + 1, 3.2, 0.55, R))
-    ;[-27, -52].forEach((z) => [-1, 1].forEach((s) => bench(g, s * 6.15, z)))
+    L.edgeTrees.forEach((z, i) => [-1, 1].forEach((s) => tree(g, leaves, s * 6.35, z, i % 2 ? 3.9 : 3.3, 0.6, R)))
+    ;[-24.9, -29.1].forEach((z) => [-1, 1].forEach((s) => bench(g, s * 6.15, z)))
     // greenery trailing over the balcony edge
     for (let z = L.entranceZ - 1; z > L.endZ + 1; z -= 0.55) {
       ;[-1, 1].forEach((s) => {

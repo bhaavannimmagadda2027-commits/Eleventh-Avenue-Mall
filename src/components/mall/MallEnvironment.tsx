@@ -15,6 +15,7 @@ import { Fountain } from './Fountain'
 import { WayChevrons } from './WayChevrons'
 import { Escalators } from './Escalators'
 import { Greenery } from './Greenery'
+import { MarketStalls } from './MarketStalls'
 import { EntranceMat, Shoppers, SunRays } from './Ambience'
 import { StoreInterior } from '../store/StoreInterior'
 import { HALLS, HALL_IDS } from '../../data/storeLayout'
@@ -38,7 +39,7 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
   }, [loc, sun])
   return (
     <>
-      <hemisphereLight ref={sky} args={['#FFF8EC', '#CDBBA2', 0.95]} />
+      <hemisphereLight ref={sky} args={['#FFF8EC', '#DCC6A6', 1.08]} />
       <directionalLight
         ref={sun}
         color="#FFF0DA"
@@ -85,6 +86,7 @@ function Locations() {
         <Fountain />
         <Escalators />
         <Greenery />
+        <MarketStalls />
         <SunRays />
         <Shoppers />
         <EntranceMat />
@@ -173,8 +175,8 @@ export function MallEnvironment() {
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.02
-        scene.background = new THREE.Color('#DCEBF3')
-        scene.fog = new THREE.Fog('#F4ECDF', 55, 150)
+        scene.background = new THREE.Color('#E4F0F5')
+        scene.fog = new THREE.Fog('#F8EFE2', 58, 150)
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
         scene.environmentIntensity = 0.62

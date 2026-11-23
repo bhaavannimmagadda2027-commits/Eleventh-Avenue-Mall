@@ -30,7 +30,7 @@ export default function App() {
   return (
     // reducedMotion="user": every Framer animation becomes a simple fade when the OS asks for less motion
     <MotionConfig reducedMotion="user">
-    <div className={`relative h-full w-full overflow-hidden bg-bg ${view === 'mall' ? 'theme-light' : ''}`}>
+    <div className={"relative h-full w-full overflow-hidden bg-bg"}>
       <MallEnvironment />
       <AnimatePresence>
         {view === 'landing' && <LandingPage key="landing" />}

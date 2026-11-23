@@ -110,7 +110,7 @@ export function AssistantPanel({ listen }: { listen?: boolean }) {
       </div>
       {micError && <p role="alert" className="rounded-xl bg-tint px-3 py-2 text-xs text-promo-ink">{micError}</p>}
       <form onSubmit={submit} className="flex items-center gap-2 rounded-2xl bg-surface p-2 shadow-[var(--shadow-soft)]">
-        <button type="button" onClick={toggleMic} aria-label={hearing ? 'Stop listening' : 'Speak your question'} aria-pressed={hearing} className={cx('grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors duration-300', hearing ? 'bg-[#3F46E8] text-white' : 'bg-cream text-ink')}>
+        <button type="button" onClick={toggleMic} aria-label={hearing ? 'Stop listening' : 'Speak your question'} aria-pressed={hearing} className={cx('grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors duration-300', hearing ? 'bg-[#5F4FA3] text-white' : 'bg-cream text-ink')}>
           {hearing ? <Stop size={18} weight="fill" /> : <Microphone size={18} />}
         </button>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={hearing ? 'Listening' : 'Ask for a product or store'} aria-label="Ask the assistant" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-3" />

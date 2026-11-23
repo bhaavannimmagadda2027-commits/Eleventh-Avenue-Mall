@@ -16,7 +16,7 @@ function ActionTile({ icon: I, label, onClick, badge, accent, small }: { icon: I
   return (
     <button onClick={onClick} aria-label={badge ? `${label}, ${badge} new` : label} className={cx(tile, small ? 'h-12 w-12 md:h-16 md:w-16' : 'h-12 w-12 md:h-20 md:w-24')}>
       {accent
-        ? <span className="grid h-8 w-8 place-items-center rounded-full bg-[#3F46E8] text-white md:h-10 md:w-10"><Smiley size={22} weight="fill" /></span>
+        ? <span className="grid h-8 w-8 place-items-center rounded-full bg-[#5F4FA3] text-white md:h-10 md:w-10"><Smiley size={22} weight="fill" /></span>
         : <I size={small ? 22 : 26} />}
       <span className={cx('hidden text-xs font-medium whitespace-nowrap md:block', small && 'md:text-xs')}>{label}</span>
       {!!badge && <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-purple px-1 text-xs leading-none font-semibold text-white tnum">{badge}</span>}
@@ -28,7 +28,7 @@ function ProfileChip() {
   const coins = useMall((s) => s.coins)
   return (
     <button onClick={() => useMall.getState().open({ kind: 'profile' })} aria-label={`Rahul, ${coins} NeuCoins`} className={cx(tile, '!flex-row !justify-start gap-2 p-2 md:gap-3 md:p-3')}>
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#2F5D8A] text-sm font-semibold text-white md:h-12 md:w-12 md:text-lg">R</span>
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-sm font-semibold text-white md:h-12 md:w-12 md:text-lg">R</span>
       <span className="pr-2 text-left">
         <span className="hidden text-sm font-medium md:block">Hi, Rahul</span>
         <span className="flex items-center gap-1 text-xs font-medium md:text-sm">
@@ -76,7 +76,7 @@ function WaypointPill() {
       aria-label={walkIn ? `Walk into ${wp.label}` : `Go to ${wp.label}, ${Math.round(wp.dist)} metres away`}
       className={cx(tile, 'absolute left-1/2 top-[38%] !flex-row -translate-x-1/2 gap-3 py-2 pl-3 pr-4 md:top-[42%]')}
     >
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#2B2B2B] text-white">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-white">
         <span ref={arrow} className="grid place-items-center"><ArrowUp size={18} weight="bold" /></span>
       </span>
       <span className="text-left">
@@ -121,23 +121,23 @@ function Minimap() {
     <div className="glass pointer-events-auto w-28 rounded-2xl p-2 md:w-44 md:p-3">
       <button onClick={() => useMall.getState().open({ kind: 'directory' })} aria-label="Open the mall directory" className="block w-full rounded-xl text-left">
         <span className="mb-1 block text-xs font-medium">You are here</span>
-        <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="block w-full rounded-lg bg-[#DCDAD5]" aria-hidden>
+        <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="block w-full rounded-lg bg-[#E9DECE]" aria-hidden>
           {hall
             ? hall.runs.map((r) => {
                 const last = r.z0 - r.bay * r.products.length
                 const x0 = ((hall.entranceZ - r.z0) / (hall.entranceZ - hall.backZ)) * MAP_W
                 const x1 = ((hall.entranceZ - last) / (hall.entranceZ - hall.backZ)) * MAP_W
-                return <rect key={r.section} x={x0} y={r.side < 0 ? 6 : MAP_H - 28} width={Math.max(4, x1 - x0 - 2)} height={22} rx={2} fill={SECTION_LABEL[r.section] === section ? '#3F46E8' : '#FFFFFF'} />
+                return <rect key={r.section} x={x0} y={r.side < 0 ? 6 : MAP_H - 28} width={Math.max(4, x1 - x0 - 2)} height={22} rx={2} fill={SECTION_LABEL[r.section] === section ? '#5F4FA3' : '#FFFFFF'} />
               })
             : <>
-                {stores.map((s) => <rect key={s.id} x={lobbyX(s.z) - 8} y={s.side < 0 ? 4 : MAP_H - 22} width={16} height={18} rx={2} fill={s.id === nearStore ? '#3F46E8' : '#FFFFFF'} />)}
+                {stores.map((s) => <rect key={s.id} x={lobbyX(s.z) - 8} y={s.side < 0 ? 4 : MAP_H - 22} width={16} height={18} rx={2} fill={s.id === nearStore ? '#5F4FA3' : '#FFFFFF'} />)}
                 <circle cx={lobbyX(L.fountain.z)} cy={lobbyY(0)} r={5} fill="#FFFFFF" />
                 <rect x={lobbyX(L.escalators.z0)} y={lobbyY(-2)} width={lobbyX(L.escalators.z1) - lobbyX(L.escalators.z0)} height={lobbyY(2) - lobbyY(-2)} rx={2} fill="#FFFFFF" opacity={0.75} />
               </>}
           {showDot && (
             <g ref={dot}>
-              <circle r={9} fill="#3F46E8" opacity={0.2} />
-              <path d="M0 -7 L4 3 L0 1 L-4 3 Z" fill="#3F46E8" />
+              <circle r={9} fill="#5F4FA3" opacity={0.2} />
+              <path d="M0 -7 L4 3 L0 1 L-4 3 Z" fill="#5F4FA3" />
             </g>
           )}
         </svg>
@@ -171,7 +171,7 @@ function ViewCart() {
     >
       <ShoppingCart size={24} weight="fill" />
       <span className="text-sm font-medium whitespace-nowrap md:text-lg">View Cart</span>
-      <span className="grid h-8 min-w-8 place-items-center rounded-full bg-[#3F46E8] px-2 text-sm font-semibold text-white tnum md:h-10 md:min-w-10 md:text-lg">{n}</span>
+      <span className="grid h-8 min-w-8 place-items-center rounded-full bg-[#5F4FA3] px-2 text-sm font-semibold text-white tnum md:h-10 md:min-w-10 md:text-lg">{n}</span>
     </motion.button>
   )
 }

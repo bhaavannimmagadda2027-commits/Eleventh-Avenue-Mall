@@ -7,7 +7,7 @@ export const L = {
   upperY: 4.8, // first-floor level
   slabT: 0.42,
   eaveY: 11.4,
-  ridgeY: 13.2,
+  ridgeY: 15.6,
   columnStep: 9, // structural rhythm along z
   spawn: { x: 0, z: 3.2, yaw: 0 },
   // ground/upper storefront slots (centres between columns)
@@ -16,6 +16,8 @@ export const L = {
   escalators: { z0: -25, z1: -33, x: 1.35 },
   bridgeZ: -35.2,
   lounges: [-16.5, -47],
+  stalls: [-9, -18, -36, -45, -54], // oak market stalls on the column line
+  edgeTrees: [0, -27, -63],
 }
 
 export type Circle = { x: number; z: number; r: number }

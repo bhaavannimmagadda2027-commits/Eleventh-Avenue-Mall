@@ -132,11 +132,13 @@ export const exteriorTex = () =>
     gr.addColorStop(0, '#BFDCF2'); gr.addColorStop(0.55, '#EEF5F8'); gr.addColorStop(0.56, '#DCD6CA'); gr.addColorStop(1, '#C9C1B2')
     g.fillStyle = gr; g.fillRect(0, 0, w, h)
     const R = rng(11)
-    for (let i = 0; i < 14; i++) {
-      const x = R() * w, y = h * 0.5
+    for (let i = 0; i < 34; i++) {
+      const x = R() * w, y = h * (0.5 + R() * 0.04), r = 26 + R() * 34
       g.fillStyle = '#7A6A58'; g.fillRect(x - 3, y - 20, 6, 50)
-      g.fillStyle = ['#7C9877', '#8FA889', '#6E8B69'][i % 3]
-      g.beginPath(); g.arc(x, y - 40, 34 + R() * 26, 0, 7); g.fill()
+      for (let k = 0; k < 7; k++) {
+        g.fillStyle = ['#6F9A58', '#88B06C', '#5E8A4C', '#A0C184'][(R() * 4) | 0]
+        g.beginPath(); g.arc(x + (R() - 0.5) * r * 1.3, y - 42 + (R() - 0.5) * r, r * (0.4 + R() * 0.3), 0, 7); g.fill()
+      }
     }
     g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(0, h * 0.56, w, 4)
   })
