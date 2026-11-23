@@ -26,25 +26,26 @@ const LED = new THREE.MeshBasicMaterial({ color: '#FFF6E2', toneMapped: false })
 
 /* ---------- signage ---------- */
 
-const wallSignTex = (hall: Hall, text: string) =>
+const SIGN = '#2B2433'
+const sentence = (t: string) => (t[0] + t.slice(1).toLowerCase()).replace(/\btv\b/i, 'TV')
+
+const wallSignTex = (hall: Hall, raw: string, text = sentence(raw)) =>
   canvasTex(`wsign-${hall.id}-${text}`, 1024, 128, (g, w, h) => {
-    g.fillStyle = '#1D1E1B'; g.fillRect(0, 0, w, h)
-    g.fillStyle = hall.theme.accent; g.fillRect(0, h - 8, w, 8)
+    g.fillStyle = SIGN; g.fillRect(0, 0, w, h)
     g.fillStyle = '#FBF8F1'; g.textAlign = 'center'; g.textBaseline = 'middle'
     let s = 66; g.font = F(700, s)
     while (g.measureText(text).width > w * 0.9 && s > 30) { s -= 2; g.font = F(600, s) }
     g.fillText(text, w / 2, h / 2 - 2)
   })
 
-const hangTex = (hall: Hall, text: string, sub: string) =>
+const hangTex = (hall: Hall, raw: string, sub: string, text = sentence(raw)) =>
   canvasTex(`hang-${hall.id}-${text}`, 1024, 220, (g, w, h) => {
-    g.fillStyle = '#1D1E1B'; g.fillRect(0, 0, w, h)
-    g.fillStyle = hall.theme.accent; g.fillRect(0, 0, 14, h)
+    g.fillStyle = SIGN; g.fillRect(0, 0, w, h)
     g.fillStyle = '#FBF8F1'; g.textBaseline = 'middle'
     let s = 78; g.font = F(600, s)
     while (g.measureText(text).width > w - 90 && s > 40) { s -= 2; g.font = F(600, s) }
     g.fillText(text, 60, h * 0.4)
-    g.fillStyle = '#B9B6AE'; g.font = F(400, 36); g.fillText(sub, 62, h * 0.76)
+    g.fillStyle = '#DCD3EE'; g.font = F(400, 36); g.fillText(sub, 62, h * 0.76)
   })
 
 const backWallTex = (hall: Hall) =>
@@ -167,13 +168,14 @@ const planOf = (t: string) => { let n = 11; for (let i = 0; i < t.length; i++) n
 /** A small card on the shelf edge, shown only for a real catalogue offer. */
 const talkerTex = (p: Product) =>
   canvasTex(`talker-${p.id}`, 320, 112, (g, w, h) => {
-    g.fillStyle = '#7665B5'; g.fillRect(0, 0, w, h)
+    g.fillStyle = '#5F4FA3'; g.fillRect(0, 0, w, h)
     g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'
     let fs = 44; g.font = F(600, fs)
     while (g.measureText(p.offer ?? '').width > w - 28 && fs > 20) { fs -= 2; g.font = F(600, fs) }
     g.fillText(p.offer ?? '', w / 2, h / 2 + 2)
   })
-const GONDOLA_BACK = () => mat('#EFE7DA', { roughness: 0.62 })
+const GONDOLA_BACK = () => mat('#F4EDE1', { roughness: 0.62 })
+const GONDOLA_FRAME = () => mat('#C9A679', { roughness: 0.52 })
 const GONDOLA_METAL = () => mat('#D8CDBB', { roughness: 0.34, metalness: 0.28 })
 
 /** Grocery shelving: a dark back panel, six shelves, the featured product at eye level and packs everywhere else. */
@@ -182,9 +184,9 @@ function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const bulk = run.fixture === 'bulk'
   const top = 2.45
   box(W, top, 0.04, GONDOLA_BACK(), 0, top / 2, -D / 2 + 0.02, bay)
-  box(W, 0.12, D, GONDOLA_METAL(), 0, 0.06, 0, bay)
-  box(0.035, top + 0.04, D - 0.06, GONDOLA_METAL(), -W / 2, (top + 0.04) / 2, -0.03, bay)
-  box(W, 0.18, 0.05, GONDOLA_METAL(), 0, top + 0.09, -D / 2 + 0.12, bay)
+  box(W, 0.12, D, GONDOLA_FRAME(), 0, 0.06, 0, bay)
+  box(0.05, top + 0.04, D - 0.06, GONDOLA_FRAME(), -W / 2, (top + 0.04) / 2, -0.03, bay)
+  box(W, 0.18, 0.05, GONDOLA_FRAME(), 0, top + 0.09, -D / 2 + 0.12, bay)
   box(W - 0.06, 0.008, 0.02, LED, 0, top - 0.01, -D / 2 + 0.16, bay)
   const levels = bulk ? [0.12, 0.64, 1.16, 1.68] : [0.12, 0.5, 0.88, 1.26, 1.64, 2.02]
   const hero = bulk ? [1, 2] : [2, 3]
@@ -195,8 +197,8 @@ function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const plan = planOf(p.id)
   levels.forEach((y, k) => {
     const room = Math.min(bulk ? 0.5 : 0.4, (levels[k + 1] ?? top) - y - 0.04)
-    if (y > 0.2) box(W - 0.02, 0.022, D - 0.1, M.white(), 0, y - 0.011, -0.01, bay)
-    box(W - 0.02, 0.05, 0.014, SHELF_EDGE(), 0, y - 0.03, front + 0.03, bay)
+    if (y > 0.2) box(W - 0.02, 0.022, D - 0.1, mat('#FBF8F2', { roughness: 0.5 }), 0, y - 0.011, -0.01, bay)
+    box(W - 0.02, 0.064, 0.016, SHELF_EDGE(), 0, y - 0.03, front + 0.03, bay)
     if (y > 0.2) box(W - 0.06, 0.006, 0.01, LED, 0, y - 0.026, front - 0.02, bay)
     if (pool.length) {
       fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03, { span: [-W / 2 + 0.03, -heroW / 2], plan: plan + 1 })
@@ -569,10 +571,20 @@ const shopRowTex = (names: string[]) =>
     })
   })
 
-const bigSignTex = (text: string, w: number, h: number, size: number, accent: string) =>
+/** Lighter category sign: white board inside an oak frame. */
+const subSignTex = (raw: string, w: number, h: number, size: number, text = sentence(raw)) =>
+  canvasTex(`subsign-${text}-${w}`, w, h, (g) => {
+    g.fillStyle = '#C9A679'; g.fillRect(0, 0, w, h)
+    g.fillStyle = '#FFFFFF'; g.fillRect(7, 7, w - 14, h - 14)
+    g.fillStyle = SIGN; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let s = size; g.font = F(700, s)
+    while (g.measureText(text).width > w * 0.88 && s > 24) { s -= 2; g.font = F(700, s) }
+    g.fillText(text, w / 2, h / 2 - 2)
+  })
+
+const bigSignTex = (raw: string, w: number, h: number, size: number, text = sentence(raw)) =>
   canvasTex(`big-${text}-${w}`, w, h, (g) => {
-    g.fillStyle = '#12110E'; g.fillRect(0, 0, w, h)
-    g.fillStyle = accent; g.fillRect(0, h - 10, w, 10)
+    g.fillStyle = SIGN; g.fillRect(0, 0, w, h)
     g.fillStyle = '#FFF9EC'; g.textAlign = 'center'; g.textBaseline = 'middle'
     let s = size; g.font = F(700, s)
     while (g.measureText(text).width > w * 0.92 && s > 24) { s -= 2; g.font = F(700, s) }
@@ -596,7 +608,7 @@ const posterTex = (title: string, sub: string, bg: string, ink: string) =>
   })
 
 function buildAtrium(g: THREE.Group, hall: Hall) {
-  const { ox, half, entranceZ, backZ, theme } = hall
+  const { ox, half, entranceZ, backZ } = hall
   const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
   const up = new THREE.Group()
   g.add(up)
@@ -649,7 +661,7 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
     w.rotation.y = z === backZ ? 0 : Math.PI
     w.position.set(ox, (eave + rise + 4.4) / 2, z)
   })
-  const far = plane(6.4, 1.2, basic(bigSignTex('ELECTRONICS', 1024, 192, 120, '#12A88A'), { fog: false }), up)
+  const far = plane(6.4, 1.2, basic(bigSignTex('ELECTRONICS', 1024, 192, 120), { fog: false }), up)
   far.position.set(ox, 5.9, backZ + 0.04)
 
   // the tall campaign banner over the aisle
@@ -673,15 +685,15 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
     const tilt = new THREE.Group()
     tilt.rotation.x = 0.1
     holder.add(tilt)
-    box(len, 0.92, 0.06, mat('#12110E', { roughness: 0.5 }), 0, 0, -0.04, tilt)
-    const mainPanel = plane(mainW, 0.88, basic(bigSignTex(zn.main, 1536, 192, 150, theme.accent), { fog: false, toneMapped: false }), tilt)
+    box(len, 0.92, 0.06, mat(SIGN, { roughness: 0.5 }), 0, 0, -0.04, tilt)
+    const mainPanel = plane(mainW, 0.88, basic(bigSignTex(zn.main, 1536, 192, 150), { fog: false, toneMapped: false }), tilt)
     // long boards start a few metres in, so the whole name is in frame from the doorway
     const inset = zn.z0 > -1 ? 2.8 : 0.05
     mainPanel.position.set(zn.s * (len / 2 - mainW / 2 - inset), 0, 0)
     const rest = len - mainW - inset - 0.15
     zn.subs.forEach((text, i) => {
       const w = rest / zn.subs.length
-      const sub = plane(w - 0.2, 0.56, basic(bigSignTex(text, 768, 128, 76, '#D9A441'), { fog: false, toneMapped: false }), tilt)
+      const sub = plane(w - 0.2, 0.56, basic(subSignTex(text, 768, 128, 66), { fog: false, toneMapped: false }), tilt)
       sub.position.set(zn.s * (len / 2 - mainW - inset - 0.1 - w * (i + 0.5)), 0, 0)
     })
   }

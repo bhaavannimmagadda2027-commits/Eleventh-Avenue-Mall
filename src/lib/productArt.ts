@@ -112,9 +112,10 @@ type PackStyle = 'clean' | 'burst' | 'wave' | 'heritage' | 'window' | 'slash' | 
 function packStyle(p: Product): PackStyle {
   if (categoryOf(p) === 'beauty') return 'clean'
   if (p.art === 'tea' || p.art === 'coffee') return 'heritage'
+  if (p.shape === 'tub' || p.shape === 'tetra') return 'wave'
   if (WRAPPED.has(p.shape)) return 'window'
   if (p.shape === 'pillow') return p.art === 'chips' || p.art === 'chilli' ? 'burst' : 'arch'
-  if (p.shape === 'tetra') return 'wave'
+  if (p.art === 'flakes' || p.art === 'muesli' || p.art === 'oats') return 'slash'
   return (['window', 'slash', 'arch'] as const)[seedOf(p.brand) % 3]
 }
 
@@ -259,8 +260,16 @@ export function tagTex(p: Product) {
   const chalk = isProduce(p)
   return canvasTex(`tag-${p.id}`, 256, 104, (g, w, h) => {
     g.fillStyle = chalk ? '#2E2B27' : '#FFFFFF'; g.fillRect(0, 0, w, h)
-    if (!chalk) { g.fillStyle = '#689F38'; g.fillRect(0, 0, 9, h) }
-    g.fillStyle = chalk ? '#F6F1E6' : '#262626'; g.textBaseline = 'middle'
+    if (!chalk) {
+      // shelf kit tag: product line above a large price
+      g.fillStyle = '#2B2433'; g.textBaseline = 'middle'
+      g.font = F(600, 21); g.fillText(`${p.name.split(/[,(]/)[0].slice(0, 15)}, ${p.size}`, 14, 24)
+      g.font = F(700, 52); g.fillText(inr(p.price), 14, 70)
+      if (p.mrp) { const x = g.measureText(inr(p.price)).width; g.font = F(500, 22); g.globalAlpha = 0.68; const m = inr(p.mrp); g.fillText(m, 26 + x, 76); g.fillRect(26 + x, 75, g.measureText(m).width, 2); g.globalAlpha = 1 }
+      if (p.offer) { g.fillStyle = '#5F4FA3'; rr(g, w - 70, h - 38, 62, 28, 6); g.fill(); g.fillStyle = '#FFF'; g.font = F(700, 15); g.textAlign = 'center'; g.fillText('OFFER', w - 39, h - 23); g.textAlign = 'left' }
+      return
+    }
+    g.fillStyle = '#F6F1E6'; g.textBaseline = 'middle'
     g.font = F(700, 44); g.fillText(inr(p.price), chalk ? 16 : 22, h * 0.4)
     if (p.mrp) { g.font = F(500, 20); g.globalAlpha = 0.6; const x = g.measureText(inr(p.price)).width; g.font = F(500, 20); g.fillText(inr(p.mrp), (chalk ? 16 : 22) + x + 52, h * 0.42); g.globalAlpha = 1 }
     g.font = F(500, 19); g.globalAlpha = 0.78
