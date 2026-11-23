@@ -27,7 +27,7 @@ export function FriendAvatar({ id, size = 36, dot = false, ring = false, classNa
 export function AvatarStack({ ids, size = 22 }: { ids: string[]; size?: number }) {
   return (
     <span className="flex">
-      {ids.map((id) => <span key={id} className="-ml-1.5 rounded-full first:ml-0" style={{ boxShadow: '0 0 0 2px var(--color-bg)' }}><FriendAvatar id={id} size={size} /></span>)}
+      {ids.map((id) => <span key={id} className="-ml-2 rounded-full first:ml-0" style={{ boxShadow: '0 0 0 2px var(--color-bg)' }}><FriendAvatar id={id} size={size} /></span>)}
     </span>
   )
 }

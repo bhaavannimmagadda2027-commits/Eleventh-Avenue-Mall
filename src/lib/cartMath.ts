@@ -1,5 +1,6 @@
 import { CATEGORY, type CategoryId } from '../data/categories'
 import { PRODUCT_BY_ID, type Product } from '../data/products'
+import { tierFor } from '../data/rewards'
 import { STORE_BY_ID, type Store } from '../data/stores'
 import type { CartLine } from '../state/useMall'
 
@@ -56,6 +57,8 @@ export type Group = {
   discount: number
   fee: number
   freeAbove?: number
+  /** membership tier that waived this store's delivery fee */
+  feeWaivedBy?: string
 }
 
 export type Bill = {
@@ -79,7 +82,8 @@ const etaOf = (st: Store) => {
   return e.charAt(0).toUpperCase() + e.slice(1)
 }
 
-export function computeBill(cart: CartLine[], opts: { useCoins: boolean; balance: number }): Bill {
+export function computeBill(cart: CartLine[], opts: { useCoins: boolean; balance: number; yearEarned?: number }): Bill {
+  const tier = tierFor(opts.yearEarned ?? 0)
   const byStore = new Map<string, Line[]>()
   for (const l of cart) {
     const p = PRODUCT_BY_ID[l.productId]
@@ -93,6 +97,7 @@ export function computeBill(cart: CartLine[], opts: { useCoins: boolean; balance
     const subtotal = lines.reduce((a, l) => a + l.total, 0)
     const offers = storeOffers(storeId, lines)
     const discount = offers.filter((o) => o.kind === 'discount').reduce((a, o) => a + o.amount, 0)
+    const standardFee = f.fee(subtotal - discount)
     return {
       store,
       category: store.category,
@@ -105,7 +110,8 @@ export function computeBill(cart: CartLine[], opts: { useCoins: boolean; balance
       mrpSavings: lines.reduce((a, l) => a + l.mrpTotal - l.total, 0),
       offers,
       discount,
-      fee: f.fee(subtotal - discount),
+      fee: tier.freeDelivery ? 0 : standardFee,
+      feeWaivedBy: tier.freeDelivery && standardFee > 0 ? tier.name : undefined,
       freeAbove: f.freeAbove,
     }
   })
@@ -121,8 +127,11 @@ export function computeBill(cart: CartLine[], opts: { useCoins: boolean; balance
   const maxRedeem = Math.max(0, Math.min(opts.balance, Math.floor(afterOffers * COIN_REDEEM_CAP)))
   const coinsUsed = opts.useCoins ? maxRedeem : 0
   const total = Math.max(0, afterOffers + fees - coinsUsed * COIN_VALUE)
-  const bonusCoins = groups.reduce((a, g) => a + g.offers.filter((o) => o.kind === 'coins').reduce((x, o) => x + o.amount, 0), 0)
-  const coinsEarned = Math.floor((afterOffers - coinsUsed) / 100) + bonusCoins
+  const offerCoins = groups.reduce((a, g) => a + g.offers.filter((o) => o.kind === 'coins').reduce((x, o) => x + o.amount, 0), 0)
+  const baseCoins = Math.floor((afterOffers - coinsUsed) / 100)
+  // the tier rate multiplies everything earned on the order, including offer coins
+  const coinsEarned = Math.floor((baseCoins + offerCoins) * tier.coinRate)
+  const bonusCoins = coinsEarned - baseCoins
   return {
     groups,
     count: groups.reduce((a, g) => a + g.count, 0),

@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { addCircle } from '../../data/layout'
+import { addCircle, addRect } from '../../data/layout'
 import { HALLS, PLACE, runEnd, type Hall, type SectionRun } from '../../data/storeLayout'
 import { PRODUCT_BY_ID, isProduce, type Product } from '../../data/products'
 import { AD_BY_ID, IN_STORE } from '../../data/advertisements'
 import { registerScreen } from '../../lib/adRotation'
 import { useMall } from '../../state/useMall'
-import { adTex, canvasTex, floorTex, inlayTex, rng, skyTex } from '../../lib/textures'
+import { adTex, bannerTex, canvasTex, floorTex, inlayTex, rng, skyTex } from '../../lib/textures'
+import { leafTex } from '../mall/Greenery'
 import { productParts, tagTex, unitSize } from '../../lib/productArt'
 import { fillerFor } from '../../data/filler'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
@@ -245,7 +246,18 @@ function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera:
   box(W - 0.04, 0.48, 0.36, stand, 0, 0.24, 0.26, bay)
   box(W - 0.04, 0.78, 0.3, stand, 0, 0.39, -0.04, bay)
   box(W - 0.04, 1.08, 0.3, stand, 0, 0.54, -0.3, bay)
-  box(W, 1.9, 0.04, GONDOLA_BACK(), 0, 0.95, -D / 2 + 0.02, bay)
+  const wallH = c.hall.atrium ? 2.62 : 1.9
+  box(W, wallH, 0.04, GONDOLA_BACK(), 0, wallH / 2, -D / 2 + 0.02, bay)
+  if (c.hall.atrium) {
+    // two shelves of the same produce above the crates, so the wall reads full to the sign
+    ;[1.62, 2.12].forEach((y) => {
+      box(W - 0.02, 0.03, 0.34, wood, 0, y - 0.015, -D / 2 + 0.2, bay)
+      box(W - 0.02, 0.09, 0.02, dark, 0, y + 0.02, -D / 2 + 0.37, bay)
+      // one front row is all the eye gets at this height, and produce meshes are heavy
+      const s = fitScale(p, 0.36, 1.05)
+      fillShelf(c.insts, p, W - 0.06, y, [-D / 2 + 0.28], 1, c.frame, c.R, s, 0.004)
+    })
+  }
   ;[[0.52, 0.27], [0.82, -0.02], [1.12, -0.29]].forEach(([y, z]) => {
     const crate = new THREE.Group()
     crate.position.set(0, y, z)
@@ -282,8 +294,8 @@ function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera:
   })
   if (camera) {
     // the dark-store camera concept, made physical: a small overhead camera above each tray
-    box(0.04, 0.04, 0.55, M.white(), 0, 2.35, -0.05, bay)
-    const cam = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), M.white())
+    box(0.04, 0.04, 0.55, GONDOLA_METAL(), 0, 2.35, -0.05, bay)
+    const cam = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GONDOLA_METAL())
     cam.rotation.x = Math.PI
     cam.position.set(0, 2.33, 0.24)
     bay.add(cam)
@@ -464,6 +476,235 @@ function homeBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   })
 }
 
+/* ---------- the grocery atrium ---------- */
+
+const shopRowTex = (names: string[]) =>
+  canvasTex(`shops-${names.join('-')}`, 2048, 440, (g, w, h) => {
+    const R = rng(names[0].length * 31 + names[1].length)
+    const cell = w / names.length
+    names.forEach((name, i) => {
+      const x = i * cell
+      g.fillStyle = '#E8BE85'; g.fillRect(x, 92, cell, h - 92)
+      g.fillStyle = '#F7DDB0'; g.fillRect(x, 92, cell, 30)
+      for (let r = 0; r < 3; r++) {
+        const y = 170 + r * 84
+        g.fillStyle = '#6B4B30'; g.fillRect(x + 28, y + 52, cell - 56, 5)
+        for (let k = x + 36; k < x + cell - 44; k += 16 + R() * 18) {
+          g.fillStyle = ['#8C3B3B', '#2F4C6E', '#D9CDB8', '#3F5B45', '#B9824A', '#2B2B2B'][(R() * 6) | 0]
+          g.fillRect(k, y + 6 + R() * 10, 11 + R() * 9, 44)
+        }
+      }
+      g.fillStyle = 'rgba(255,255,255,0.12)'
+      for (let m = 1; m < 4; m++) g.fillRect(x + (cell * m) / 4, 92, 3, h - 92)
+      g.fillStyle = '#17130F'; g.fillRect(x, 0, cell, 92)
+      g.fillStyle = '#FFF4DF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = F(700, 54)
+      g.fillText(name, x + cell / 2, 48)
+      g.fillStyle = '#4A3A2B'; g.fillRect(x, 0, 12, h); g.fillRect(x + cell - 12, 0, 12, h)
+    })
+  })
+
+const bigSignTex = (text: string, w: number, h: number, size: number, accent: string) =>
+  canvasTex(`big-${text}-${w}`, w, h, (g) => {
+    g.fillStyle = '#12110E'; g.fillRect(0, 0, w, h)
+    g.fillStyle = accent; g.fillRect(0, h - 10, w, 10)
+    g.fillStyle = '#FFF9EC'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let s = size; g.font = F(700, s)
+    while (g.measureText(text).width > w * 0.92 && s > 24) { s -= 2; g.font = F(700, s) }
+    g.fillText(text, w / 2, h / 2 - 3)
+  })
+
+const posterTex = (title: string, sub: string, bg: string, ink: string) =>
+  canvasTex(`poster-${title}`, 512, 736, (g, w, h) => {
+    g.fillStyle = bg; g.fillRect(0, 0, w, h)
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.beginPath(); g.arc(w / 2, h * 0.62, 190, 0, 7); g.fill()
+    g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let s = 76; g.font = F(700, s)
+    while (g.measureText(title).width > w * 0.86) { s -= 2; g.font = F(700, s) }
+    g.fillText(title, w / 2, h * 0.16)
+    g.font = F(500, 30); g.fillText(sub, w / 2, h * 0.26)
+    // a plain bottle, no label artwork
+    g.fillStyle = '#F2B632'; g.fillRect(w / 2 - 70, h * 0.48, 140, 270)
+    g.fillRect(w / 2 - 28, h * 0.4, 56, 70)
+    g.fillStyle = '#B5301F'; g.fillRect(w / 2 - 34, h * 0.37, 68, 28)
+    g.fillStyle = '#FFF6DF'; g.fillRect(w / 2 - 70, h * 0.6, 140, 96)
+  })
+
+function buildAtrium(g: THREE.Group, hall: Hall) {
+  const { ox, half, entranceZ, backZ, theme } = hall
+  const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
+  const up = new THREE.Group()
+  g.add(up)
+  const outer = half + 2.2, eave = 10.4, rise = 3.2
+  const stone = mat('#7A6650', { roughness: 0.6 }), dark = mat('#2B231B', { roughness: 0.6 })
+  const steel = mat('#3A3A38', { roughness: 0.45, metalness: 0.5 })
+  const levels = [
+    { y: 4.4, edge: half, names: { [-1]: ['WESTSIDE', 'TITAN', 'ZUDIO', 'FASHION'], [1]: ['FASHION', 'TANISHQ', 'CROMA', 'WESTSIDE'] } as Record<number, string[]> },
+    { y: 7.5, edge: half + 0.6, names: { [-1]: ['HOME', 'BEAUTY', 'KIDS', 'FOOTWEAR'], [1]: ['BEAUTY', 'WATCHES', 'HOME', 'KIDS'] } as Record<number, string[]> },
+  ]
+  ;[-1, 1].forEach((s) => {
+    levels.forEach((l) => {
+      const w = outer - l.edge + 0.1
+      box(w, 0.34, L, stone, ox + s * (l.edge + w / 2), l.y - 0.17, zc, up)
+      box(0.06, 0.38, L, dark, ox + s * l.edge, l.y - 0.17, zc, up)
+      box(0.05, 0.02, L - 0.4, LED, ox + s * (l.edge + 0.12), l.y - 0.35, zc, up)
+      const glass = plane(L, 1.05, M.glass(), up)
+      glass.rotation.y = -s * Math.PI / 2
+      glass.position.set(ox + s * (l.edge + 0.04), l.y + 0.53, zc)
+      box(0.06, 0.05, L, M.alu(), ox + s * (l.edge + 0.04), l.y + 1.07, zc, up)
+      for (let z = entranceZ; z >= backZ; z -= 2.4) box(0.03, 1.05, 0.03, steel, ox + s * (l.edge + 0.04), l.y + 0.53, z, up)
+      const pw = L / 3
+      for (let i = 0; i < 3; i++) {
+        const shop = plane(pw, 2.9, basic(shopRowTex(l.names[s]), { fog: false }), up)
+        shop.rotation.y = -s * Math.PI / 2
+        shop.position.set(ox + s * outer, l.y + 1.45, entranceZ - pw * (i + 0.5))
+      }
+    })
+    for (let z = entranceZ - 2; z > backZ; z -= 8) box(0.42, eave - 4.4, 0.42, stone, ox + s * (half + 1.9), (eave + 4.4) / 2, z, up)
+    box(0.3, 0.3, L, dark, ox + s * outer, eave + 0.1, zc, up)
+
+    // glass gable
+    const len = Math.hypot(outer, rise), a = Math.atan2(rise, outer)
+    const slope = new THREE.Group()
+    slope.position.set(ox + (s * outer) / 2, eave + rise / 2, zc)
+    slope.rotation.z = -s * a
+    up.add(slope)
+    const sky = plane(len, L, new THREE.MeshBasicMaterial({ map: skyTex(), fog: false }), slope)
+    sky.rotation.x = Math.PI / 2
+    sky.position.y = 0.02
+    for (let z = -L / 2; z <= L / 2; z += 2.4) box(len, 0.13, 0.08, dark, 0, -0.06, z, slope)
+    for (let k = 0; k <= 5; k++) box(0.06, 0.06, L, dark, -len / 2 + (k * len) / 5, -0.05, 0, slope)
+  })
+  box(0.2, 0.22, L, dark, ox, eave + rise, zc, up)
+
+  // upper end walls, with the next department signed on the far one
+  const endWall = mat('#55432F', { roughness: 0.75 })
+  ;[backZ, entranceZ].forEach((z) => {
+    const w = plane(outer * 2, eave + rise - 4.4, endWall, up)
+    w.rotation.y = z === backZ ? 0 : Math.PI
+    w.position.set(ox, (eave + rise + 4.4) / 2, z)
+  })
+  const far = plane(6.4, 1.2, basic(bigSignTex('ELECTRONICS', 1024, 192, 120, '#12A88A'), { fog: false }), up)
+  far.position.set(ox, 5.9, backZ + 0.04)
+
+  // the tall campaign banner over the aisle
+  const banner = plane(3.0, 4.8, basic(bannerTex(), { side: THREE.DoubleSide, fog: false }), up)
+  banner.position.set(ox, 7.6, -17)
+  ;[-1.3, 1.3].forEach((x) => box(0.012, eave + rise - 10, 0.012, M.alu(), ox + x, (eave + rise + 10) / 2 - 0.4, -17, up))
+
+  // department signs: one large board at the near end, sub signs running on down the wall
+  const zones = [
+    { s: -1, z0: -0.6, z1: -16, main: 'FRESH PRODUCE', subs: ['Farm Fresh', 'Naturally Yours'] },
+    { s: -1, z0: -16.4, z1: -30.7, main: 'DAIRY & BAKERY', subs: ['Chilled Daily', 'Baked Fresh'] },
+    { s: 1, z0: -0.6, z1: -18.7, main: 'GROCERY ESSENTIALS', subs: ['Cooking Essentials', 'Snacks & Drinks', 'Staples'] },
+    { s: 1, z0: -19, z1: -25, main: 'TEA & JUICES', subs: [] as string[] },
+  ]
+  for (const zn of zones) {
+    const len = zn.z0 - zn.z1, mainW = Math.min(len - 0.1, 7)
+    const holder = new THREE.Group()
+    holder.position.set(ox + zn.s * (half - 0.16), 3.62, (zn.z0 + zn.z1) / 2)
+    holder.rotation.y = -zn.s * Math.PI / 2
+    up.add(holder)
+    const tilt = new THREE.Group()
+    tilt.rotation.x = 0.1
+    holder.add(tilt)
+    box(len, 0.92, 0.06, mat('#12110E', { roughness: 0.5 }), 0, 0, -0.04, tilt)
+    const mainPanel = plane(mainW, 0.88, basic(bigSignTex(zn.main, 1536, 192, 150, theme.accent), { fog: false, toneMapped: false }), tilt)
+    // long boards start a few metres in, so the whole name is in frame from the doorway
+    const inset = zn.z0 > -1 ? 2.8 : 0.05
+    mainPanel.position.set(zn.s * (len / 2 - mainW / 2 - inset), 0, 0)
+    const rest = len - mainW - inset - 0.15
+    zn.subs.forEach((text, i) => {
+      const w = rest / zn.subs.length
+      const sub = plane(w - 0.2, 0.56, basic(bigSignTex(text, 768, 128, 76, '#D9A441'), { fog: false, toneMapped: false }), tilt)
+      sub.position.set(zn.s * (len / 2 - mainW - inset - 0.1 - w * (i + 0.5)), 0, 0)
+    })
+  }
+
+  // oil and staples posters on the open stretch of the right wall
+  ;[
+    { z: -26.8, tex: posterTex('Gold Winner', 'Refined sunflower oil', '#C8201C', '#FFF3D6') },
+    { z: -30.4, tex: posterTex('Tata Sampann', 'Dals, spices and more', '#1F4E8C', '#FFFFFF') },
+  ].forEach(({ z, tex }) => {
+    const p = plane(2.5, 3.6, basic(tex, { fog: false }), up)
+    p.rotation.y = -Math.PI / 2
+    p.position.set(ox + half - 0.08, 1.9, z)
+    box(0.05, 3.7, 2.6, dark, ox + half - 0.04, 1.9, z, up)
+  })
+
+  // trees on the first floor gallery, clear of the driving aisle
+  const R = rng(137)
+  const leaves: [number, number, number, number][] = []
+  ;[-1, 1].forEach((s) => {
+    for (let z = -3 - (s > 0 ? 3 : 0); z > backZ + 2; z -= 7.5) {
+      const x = ox + s * (half + 1.05), y = 4.4
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.34, 0.62, 18), M.ceramic())
+      pot.position.set(x, y + 0.31, z)
+      up.add(pot)
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 2.5, 8), mat('#6F5D49', { roughness: 0.85 }))
+      trunk.position.set(x, y + 1.8, z)
+      up.add(trunk)
+      for (let i = 0; i < 70; i++) {
+        const a = R() * Math.PI * 2, d = Math.sqrt(R()) * 1.15
+        leaves.push([x + Math.cos(a) * d, y + 2.5 + R() * 1.5 - d * 0.35, z + Math.sin(a) * d, 0.5 + R() * 0.45])
+      }
+    }
+  })
+  const leafM = new THREE.MeshStandardMaterial({ map: leafTex(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8 })
+  const foliage = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.2, 1.2), leafM, leaves.length)
+  const tm = new THREE.Matrix4(), tq = new THREE.Quaternion(), te = new THREE.Euler()
+  leaves.forEach(([x, y, z, sc], i) => {
+    te.set(R() * Math.PI, R() * Math.PI, R() * Math.PI)
+    tq.setFromEuler(te)
+    tm.compose(new THREE.Vector3(x, y, z), tq, new THREE.Vector3(sc, sc, sc))
+    foliage.setMatrixAt(i, tm)
+  })
+  foliage.frustumCulled = false
+  up.add(foliage)
+
+  // the upper storeys stay out of the shadow pass
+  up.traverse((o) => { o.userData.noShadow = true })
+}
+
+/** A produce island on the aisle centre line: tilted crates down both long sides. */
+function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[]) {
+  const { ox } = c.hall
+  const wood = mat('#B08F5E', { roughness: 0.85 }), darkWood = mat('#7A5F3C', { roughness: 0.85 })
+  const isl = new THREE.Group()
+  isl.position.set(ox, 0, z)
+  g.add(isl)
+  box(0.86, 0.5, 3.0, darkWood, 0, 0.25, 0, isl)
+  box(0.34, 0.86, 2.9, darkWood, 0, 0.43, 0, isl)
+  const crateL = 0.72, crateD = 0.42
+  ;[-1, 1].forEach((side) => {
+    for (let k = 0; k < 4; k++) {
+      const p = PRODUCT_BY_ID[ids[(k + (side > 0 ? 2 : 0)) % ids.length]]
+      const crate = new THREE.Group()
+      crate.position.set(side * 0.37, 0.56, -1.11 + k * 0.74)
+      crate.rotation.set(0, 0, -side * 0.24)
+      isl.add(crate)
+      box(crateD, 0.03, crateL, wood, 0, 0, 0, crate)
+      ;[-1, 1].forEach((e) => {
+        box(crateD, 0.13, 0.022, wood, 0, 0.06, (e * crateL) / 2, crate)
+        box(0.022, 0.13, crateL, wood, (e * crateD) / 2, 0.06, 0, crate)
+      })
+      isl.updateMatrix(); crate.updateMatrix()
+      const frame = new THREE.Matrix4().makeTranslation(ox, 0, z).multiply(crate.matrix)
+      const [uw, uh, ud] = unitSize(p)
+      for (let layer = 0; layer < 2; layer++) {
+        const nx = Math.max(1, Math.floor((crateD - 0.04) / (uw * 0.94))), nz = Math.max(1, Math.floor((crateL - 0.04) / (ud * 0.94)))
+        for (let ix = 0; ix < nx; ix++)
+          for (let iz = 0; iz < nz; iz++) {
+            if (layer && c.R() < 0.18 + layer * 0.16) continue
+            const px = ((ix + 0.5) / nx - 0.5) * (crateD - 0.05) + (c.R() - 0.5) * 0.015
+            const pz = ((iz + 0.5) / nz - 0.5) * (crateL - 0.05) + (c.R() - 0.5) * 0.015
+            put(c, p, p.id, px, 0.016 + layer * uh * 0.72, pz, 0.9 + c.R() * 0.18, c.R() * 6.28, frame)
+          }
+      }
+    }
+  })
+  addRect({ x0: ox - 0.62, x1: ox + 0.62, z0: z - 1.56, z1: z + 1.56 }, c.hall.id)
+}
+
 /* ---------- the hall ---------- */
 
 function buildHall(hall: Hall) {
@@ -472,8 +713,8 @@ function buildHall(hall: Hall) {
   const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
 
   // polished stone: a mirror under a mostly opaque floor gives soft reflections of the shelves and lights
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: new THREE.Color(theme.floor).offsetHSL(0.0, 0.06, -0.2), roughness: 0.22 })
-  const runnerMat = new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), roughness: 0.28 })
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex([(half * 2) / 2.4, L / 2.4]), color: '#B5A18A', roughness: 0.36 })
+  const runnerMat = new THREE.MeshStandardMaterial({ map: inlayTex([1, L / 1.6]), color: '#A08A70', roughness: 0.38 })
   const floor = plane(half * 2, L, floorMat, g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(ox, 0, zc)
@@ -497,25 +738,26 @@ function buildHall(hall: Hall) {
   runner.userData.noCast = true
 
   // walls catch soft bounced daylight so the store never reads as gloomy
-  const plaster = mat(theme.wall, { roughness: 0.9, emissive: theme.wallGlow, emissiveIntensity: 0.12 })
+  const plaster = mat('#' + new THREE.Color(theme.wall).multiplyScalar(0.2).getHexString(), { roughness: 0.75 })
+  const wallH = hall.atrium ? 4.4 : ceilY
   ;[-1, 1].forEach((s) => {
-    const w = plane(L, ceilY, plaster, g)
+    const w = plane(L, wallH, plaster, g)
     w.rotation.y = -s * Math.PI / 2
-    w.position.set(ox + s * half, ceilY / 2, zc)
+    w.position.set(ox + s * half, wallH / 2, zc)
     w.userData.noCast = true
     box(0.02, 0.06, L, mat(theme.accent), ox + s * (half - 0.01), 3.2, zc, g).userData.noCast = true
   })
-  const back = plane(half * 2, ceilY, basic(backWallTex(hall)), g)
-  back.position.set(ox, ceilY / 2, backZ)
+  const back = plane(half * 2, wallH, basic(backWallTex(hall)), g)
+  back.position.set(ox, wallH / 2, backZ)
   ;[-1, 1].forEach((s) => {
-    const w = plane(half - 1.6, ceilY, plaster, g)
+    const w = plane(half - 1.6, wallH, plaster, g)
     w.rotation.y = Math.PI
-    w.position.set(ox + s * (1.6 + (half - 1.6) / 2), ceilY / 2, entranceZ)
+    w.position.set(ox + s * (1.6 + (half - 1.6) / 2), wallH / 2, entranceZ)
     w.userData.noCast = true
   })
-  const lintel = plane(3.2, ceilY - 3.1, plaster, g)
+  const lintel = plane(3.2, wallH - 3.1, plaster, g)
   lintel.rotation.y = Math.PI
-  lintel.position.set(ox, 3.1 + (ceilY - 3.1) / 2, entranceZ)
+  lintel.position.set(ox, 3.1 + (wallH - 3.1) / 2, entranceZ)
   lintel.userData.noCast = true
   const door = plane(3.2, 3.1, basic(doorwayTex()), g)
   door.rotation.y = Math.PI
@@ -524,12 +766,14 @@ function buildHall(hall: Hall) {
   box(3.28, 0.08, 0.12, M.alu(), ox, 3.1, entranceZ - 0.02, g)
 
   // ceiling: plaster with a long skylight over the aisle, white beams, linear lights
+  if (hall.atrium) buildAtrium(g, hall)
+  else {
   ;[-1, 1].forEach((s) => {
-    const cl = plane(half - 1.5, L, mat('#E2D9CA', { roughness: 1, side: THREE.DoubleSide }), g)
+    const cl = plane(half - 1.5, L, mat('#2F261E', { roughness: 0.8, side: THREE.DoubleSide }), g)
     cl.rotation.x = Math.PI / 2
     cl.position.set(ox + s * (1.5 + (half - 1.5) / 2), ceilY, zc)
     cl.userData.noCast = true
-    const strip = plane(0.12, L - 2, new THREE.MeshBasicMaterial({ color: '#FFFBF2' }), g)
+    const strip = plane(0.12, L - 2, new THREE.MeshBasicMaterial({ color: '#FFE0AE', toneMapped: false }), g)
     strip.rotation.x = Math.PI / 2
     strip.position.set(ox + s * (half - 1.2), ceilY - 0.01, zc)
   })
@@ -545,6 +789,7 @@ function buildHall(hall: Hall) {
     s.position.set(ox, 3.75, z)
     ;[-1.4, 1.4].forEach((x) => box(0.01, ceilY - 4.1, 0.01, M.alu(), ox + x, (ceilY + 4.1) / 2, z, g))
   })
+  }
 
   ;[-1, 1].forEach((s) => box(0.05, 0.56, L - 0.4, mat('#1D1E1B', { roughness: 0.6 }), ox + s * (half - 0.025), 2.93, zc, g).userData.noCast = true)
 
@@ -583,6 +828,13 @@ function buildHall(hall: Hall) {
       }
     })
   })
+
+  if (hall.atrium) {
+    const c: Ctx = { hall, insts, R, frame: new THREE.Matrix4() }
+    produceIsland(g, c, -6, ['apple', 'orange', 'tomato', 'capsicum'])
+    produceIsland(g, c, -13, ['banana', 'pomegranate', 'carrot', 'onion'])
+    produceIsland(g, c, -22, ['potato', 'broccoli', 'apple', 'tomato'])
+  }
 
   // a small double-sided digital display hanging where the first section meets the next
   const ids = IN_STORE[hall.id]
@@ -648,7 +900,7 @@ function buildHall(hall: Hall) {
   // hundreds of small packs in the shadow pass roughly doubled the triangle count for no visible gain.
   g.traverse((o) => {
     const im = o as THREE.InstancedMesh
-    if (!im.isInstancedMesh) return
+    if (!im.isInstancedMesh || im.userData.noShadow) return
     im.receiveShadow = true
     im.geometry.computeBoundingBox()
     const size = im.geometry.boundingBox!.getSize(new THREE.Vector3())

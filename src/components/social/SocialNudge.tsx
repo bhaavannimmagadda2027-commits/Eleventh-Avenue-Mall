@@ -16,11 +16,11 @@ export function SocialNudge() {
     return () => clearTimeout(t)
   }, [nudge])
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[calc(112px+env(safe-area-inset-top))] z-50 flex justify-center px-4" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(120px+env(safe-area-inset-top))] md:top-[calc(160px+env(safe-area-inset-top))] z-50 flex justify-center px-4" aria-live="polite">
       <AnimatePresence>
         {shown && view === 'mall' && (
           <motion.div key={shown.nonce} role="status" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}
-            className="glass flex h-9 max-w-full items-center gap-2 rounded-full pl-1 pr-3.5 text-[13px] font-medium">
+            className="glass flex h-9 max-w-full items-center gap-2 rounded-full pl-1 pr-3 text-xs font-medium">
             <FriendAvatar id={shown.friendId} size={28} />
             <span className="truncate">{shown.text}</span>
           </motion.div>
@@ -42,9 +42,9 @@ export function FriendsButton() {
       className="glass relative grid h-11 w-11 shrink-0 place-items-center rounded-full active:scale-95">
       <FriendAvatar id={first} size={32} ring={!!session} />
       {!session && here.length > 1 && (
-        <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-white bg-success px-1 text-[10px] font-semibold text-white tnum">{here.length}</span>
+        <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full border-2 border-bg bg-success px-1 text-xs font-semibold text-on-ink tnum">{here.length}</span>
       )}
-      {!session && here.length === 1 && <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-success" />}
+      {!session && here.length === 1 && <span className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border-2 border-bg bg-success" />}
     </button>
   )
 }

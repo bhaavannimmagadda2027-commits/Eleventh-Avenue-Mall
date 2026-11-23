@@ -63,12 +63,12 @@ export const floorTex = (repeat: [number, number]) =>
     const s = w / n
     for (let i = 0; i < n; i++)
       for (let j = 0; j < n; j++) {
-        const v = 214 + R() * 8
-        g.fillStyle = `rgb(${v + 4},${v + 3},${v - 2})`
+        const v = 196 + R() * 12
+        g.fillStyle = `rgb(${v + 8},${v - 2},${v - 16})`
         g.fillRect(i * s, j * s, s, s)
-        for (let k = 0; k < 6; k++) {
-          g.strokeStyle = `rgba(160,156,146,${0.05 + R() * 0.06})`
-          g.lineWidth = 0.6 + R() * 1.4
+        for (let k = 0; k < 16; k++) {
+          g.strokeStyle = `rgba(92,74,56,${0.1 + R() * 0.2})`
+          g.lineWidth = 0.6 + R() * 2.2
           g.beginPath()
           let x = i * s + R() * s, y = j * s + R() * s
           g.moveTo(x, y)
@@ -78,13 +78,29 @@ export const floorTex = (repeat: [number, number]) =>
       }
     g.fillStyle = 'rgba(255,255,255,0.18)'
     for (let i = 0; i < 1600; i++) g.fillRect(R() * w, R() * h, 1.4, 1.4)
-    g.strokeStyle = 'rgba(150,146,138,0.55)'
-    g.lineWidth = 3
+    g.strokeStyle = 'rgba(96,80,62,0.6)'
+    g.lineWidth = 2
     for (let i = 0; i <= n; i++) {
       g.beginPath(); g.moveTo(i * s, 0); g.lineTo(i * s, h); g.stroke()
       g.beginPath(); g.moveTo(0, i * s); g.lineTo(w, i * s); g.stroke()
     }
   }, { repeat })
+
+/** Tall hanging banner over the aisle. Text and abstract colour only, no logos. */
+export const bannerTex = () =>
+  canvasTex('neu-banner', 512, 820, (g, w, h) => {
+    g.fillStyle = '#14173A'
+    g.fillRect(0, 0, w, h)
+    const swoosh = g.createLinearGradient(w * 0.3, h, w, h * 0.55)
+    swoosh.addColorStop(0, '#2B6BE8'); swoosh.addColorStop(0.45, '#9B3FD8'); swoosh.addColorStop(0.75, '#E8407A'); swoosh.addColorStop(1, '#F59A3C')
+    g.fillStyle = swoosh
+    g.beginPath(); g.moveTo(w * 0.42, h); g.bezierCurveTo(w * 0.5, h * 0.8, w * 0.72, h * 0.66, w, h * 0.6); g.lineTo(w, h); g.closePath(); g.fill()
+    g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.font = '500 46px Geist, system-ui, sans-serif'
+    g.fillText('A TATA Product', w / 2, 120); g.fillText('for Every Need', w / 2, 184)
+    g.font = '700 74px Geist, system-ui, sans-serif'; g.fillText('TATA', w / 2, 370)
+    g.font = '500 44px Geist, system-ui, sans-serif'; g.fillText('NEU', w / 2, 440)
+  })
 
 /** Warm stone inlay for the central walkway band. */
 export const inlayTex = (repeat: [number, number]) =>

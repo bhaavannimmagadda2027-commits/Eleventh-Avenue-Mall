@@ -50,27 +50,25 @@ export function CartJoystick() {
       ref={base}
       role="application"
       aria-label="Joystick: drag to drive NEU CART. Arrow keys or W A S D also work."
-      className="glass relative h-[104px] w-[104px] shrink-0 touch-none select-none rounded-full"
+      className="relative h-[104px] w-[104px] shrink-0 touch-none select-none rounded-full border border-white/70 bg-white/25 shadow-[0_8px_24px_-10px_rgb(0_0_0/0.5)] backdrop-blur-md"
       onPointerDown={(e) => { pid.current = e.pointerId; base.current!.setPointerCapture(e.pointerId); update(e) }}
       onPointerMove={(e) => { if (e.pointerId === pid.current) update(e) }}
       onPointerUp={end}
       onPointerCancel={end}
     >
-      <div className="absolute inset-[14px] rounded-full border border-[rgb(38_38_38/0.06)]" />
       {dir !== null && (
         <div
           className="absolute left-1/2 top-1/2 h-[92px] w-[92px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ background: `conic-gradient(from ${dir + Math.PI / 2 - 0.5}rad, rgb(118 101 181 / 0.22) 0 1rad, transparent 1rad)` }}
+          style={{ background: `conic-gradient(from ${dir + Math.PI / 2 - 0.5}rad, rgb(167 150 232 / 0.4) 0 1rad, transparent 1rad)` }}
         />
       )}
       {[0, 90, 180, 270].map((a) => (
-        <span key={a} className="absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full bg-[rgb(38_38_38/0.18)]" style={{ transform: `rotate(${a}deg) translate(40px) translate(-50%,-50%)` }} />
+        <svg key={a} viewBox="0 0 12 8" className="absolute left-1/2 top-1/2 h-2 w-3 text-white" style={{ transform: `translate(-50%,-50%) rotate(${a}deg) translateY(-42px)` }} aria-hidden><path d="M1 7 L6 2 L11 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
       ))}
       <div
-        className="absolute left-1/2 top-1/2 h-[46px] w-[46px] rounded-full bg-white shadow-[0_6px_14px_-4px_rgb(38_38_38/0.35),inset_0_-2px_4px_rgb(38_38_38/0.08)]"
+        className="absolute left-1/2 top-1/2 h-[46px] w-[46px] rounded-full bg-white shadow-[0_6px_14px_-4px_rgb(0_0_0/0.6)]"
         style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`, transition: knob.active ? 'none' : 'transform 260ms var(--ease-calm)' }}
       >
-        <span className="absolute inset-[15px] rounded-full bg-purple/80" />
       </div>
     </div>
   )

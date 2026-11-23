@@ -29,13 +29,15 @@ export type Hall = {
   hanging: { z: number; text: string; sub: string }[]
   runs: SectionRun[]
   promo?: { adId: string; products: [string, string] }
+  /** open multi storey hall: galleries, glass roof, big signs and produce islands */
+  atrium?: boolean
 }
 
 const base = { depth: 0.9, entranceZ: 4.4, ceilY: 5.0, spawnZ: 2.8 }
 
 export const HALLS: Record<string, Hall> = {
   bigbasket: {
-    ...base, id: 'bigbasket', ox: 200, half: 3.9, backZ: -36, light: 'neutral',
+    ...base, id: 'bigbasket', ox: 200, half: 5.6, ceilY: 10.4, backZ: -36, light: 'neutral', atrium: true,
     theme: { wall: '#F7F3EC', wallGlow: '#EDE6D8', floor: '#FBF6EE', accent: '#5E9431', signInk: '#2B3A22' },
     back: { title: 'bigbasket', sub: 'Fresh from your neighbourhood, every day' },
     hanging: [
@@ -45,13 +47,13 @@ export const HALLS: Record<string, Hall> = {
     ],
     runs: [
       { section: 'vegetables', side: -1, z0: -0.6, fixture: 'crates', bay: 1.25, sign: 'VEGETABLES', products: ['tomato', 'onion', 'potato', 'carrot', 'capsicum', 'broccoli', 'lettuce', 'spinach'] },
-      { section: 'dairy', side: -1, z0: -11.9, fixture: 'chiller', bay: 1.35, sign: 'DAIRY & EGGS', products: ['milk', 'milk-full', 'curd', 'paneer', 'butter', 'cheese', 'eggs'] },
-      { section: 'snacks', side: -1, z0: -22.3, fixture: 'gondola', bay: 1.5, sign: 'SNACKS', products: ['chips-salted', 'chips-masala', 'biscuits'] },
-      { section: 'breakfast', side: -1, z0: -27.2, fixture: 'gondola', bay: 1.55, sign: 'BREAKFAST', products: ['cornflakes', 'muesli', 'oats', 'honey'] },
-      { section: 'fruits', side: 1, z0: -0.6, fixture: 'crates', bay: 1.25, sign: 'FRUIT', products: ['apple', 'banana', 'orange', 'pomegranate'] },
-      { section: 'bakery', side: 1, z0: -6.4, fixture: 'bakery', bay: 1.5, sign: 'BAKERY', products: ['bread-white', 'bread-brown', 'pav'] },
-      { section: 'beverages', side: 1, z0: -11.9, fixture: 'gondola', bay: 1.5, sign: 'TEA, COFFEE & JUICES', products: ['tea', 'coffee', 'oj', 'mango-drink'] },
-      { section: 'staples', side: 1, z0: -18.6, fixture: 'bulk', bay: 1.7, sign: 'RICE, ATTA & DAL', products: ['rice', 'atta', 'dal', 'oil'] },
+      { section: 'dairy', side: -1, z0: -16.4, fixture: 'chiller', bay: 1.35, sign: 'DAIRY & EGGS', products: ['milk', 'milk-full', 'curd', 'paneer', 'butter', 'cheese', 'eggs'] },
+      { section: 'snacks', side: 1, z0: -0.6, fixture: 'gondola', bay: 1.5, sign: 'SNACKS', products: ['chips-salted', 'chips-masala', 'biscuits'] },
+      { section: 'breakfast', side: 1, z0: -5.4, fixture: 'gondola', bay: 1.55, sign: 'BREAKFAST', products: ['cornflakes', 'muesli', 'oats', 'honey'] },
+      { section: 'fruits', side: -1, z0: -11, fixture: 'crates', bay: 1.25, sign: 'FRUIT', products: ['apple', 'banana', 'orange', 'pomegranate'] },
+      { section: 'bakery', side: -1, z0: -26.2, fixture: 'bakery', bay: 1.5, sign: 'BAKERY', products: ['bread-white', 'bread-brown', 'pav'] },
+      { section: 'beverages', side: 1, z0: -19, fixture: 'gondola', bay: 1.5, sign: 'TEA, COFFEE & JUICES', products: ['tea', 'coffee', 'oj', 'mango-drink'] },
+      { section: 'staples', side: 1, z0: -11.9, fixture: 'bulk', bay: 1.7, sign: 'RICE, ATTA & DAL', products: ['rice', 'atta', 'dal', 'oil'] },
     ],
     promo: { adId: 'bb-breakfast', products: ['cornflakes', 'muesli'] },
   },

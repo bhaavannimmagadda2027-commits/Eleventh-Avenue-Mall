@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Copy, Gift, Hand, Link2, MapPin, Plus, ShieldCheck, Users } from 'lucide-react'
+import { ChevronRight, Copy, Gift, Hand, Link2, MapPin, Plus, ShieldCheck, Users } from '../ui/icons'
 import { FRIENDS, FRIEND_BY_ID, type Friend } from '../../data/social'
 import { PRODUCT_BY_ID } from '../../data/products'
 import { thumb } from '../../lib/productArt'
@@ -19,7 +19,7 @@ function presenceLine(id: string) {
   return `${p.status === 'away' ? 'Away' : 'Offline'} · ${p.seen}`
 }
 
-const small = 'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold'
+const small = 'flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold'
 
 function FriendRow({ f }: { f: Friend }) {
   useMall((s) => s.presence[f.id])
@@ -36,8 +36,8 @@ function FriendRow({ f }: { f: Friend }) {
           <span className={cx('block truncate text-support', withThem ? 'font-medium text-purple-ink' : 'text-ink-2')}>{withThem ? `Shopping with you · ${placeName(useMall.getState().presence[f.id]?.at)}` : presenceLine(f.id)}</span>
         </span>
       </button>
-      <button onClick={() => wave(f.id)} aria-label={`Wave at ${f.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream"><Hand size={16} strokeWidth={1.8} /></button>
-      {online && !withThem && <button onClick={() => joinFriend(f.id)} aria-label={`Go to ${f.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream"><MapPin size={16} strokeWidth={1.8} /></button>}
+      <button onClick={() => wave(f.id)} aria-label={`Wave at ${f.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream"><Hand size={16} /></button>
+      {online && !withThem && <button onClick={() => joinFriend(f.id)} aria-label={`Go to ${f.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream"><MapPin size={16} /></button>}
     </div>
   )
 }
@@ -50,28 +50,28 @@ function SessionCard() {
   if (session) {
     const f = FRIEND_BY_ID[session.with]
     return (
-      <section className="rounded-[20px] bg-purple-soft p-4">
+      <section className="rounded-2xl bg-purple-soft p-4">
         <div className="flex items-center gap-3">
           <FriendAvatar id={f.id} size={40} ring />
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="text-[15px] font-semibold">Shopping with {f.name}</div>
+            <div className="text-sm font-semibold">Shopping with {f.name}</div>
             <div className="text-micro text-ink-2">Live for {since(session.since)} · you share the family cart</div>
           </div>
         </div>
         <div className="mt-3 flex gap-2">
           <Button className="flex-1" onClick={() => { setCartMode('family'); open({ kind: 'cart' }) }}>Open family cart</Button>
-          <Button variant="quiet" className="bg-white" onClick={endSession}>Leave</Button>
+          <Button variant="quiet" className="bg-surface" onClick={endSession}>Leave</Button>
         </div>
       </section>
     )
   }
   return (
-    <section className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
-      <div className="flex items-center gap-2 text-[15px] font-semibold"><Users size={17} strokeWidth={1.8} className="text-purple-ink" />Shop together</div>
+    <section className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
+      <div className="flex items-center gap-2 text-sm font-semibold"><Users size={17} className="text-purple-ink" />Shop together</div>
       <p className="mt-1 text-support text-ink-2">Start a session and walk the mall together. You see where each other are and build the family cart side by side.</p>
       <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
         {online.map((f) => (
-          <button key={f.id} onClick={() => startSession(f.id)} className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink pl-1 pr-3.5 text-[13px] font-semibold text-white">
+          <button key={f.id} onClick={() => startSession(f.id)} className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink pl-1 pr-3 text-xs font-semibold text-on-ink">
             <FriendAvatar id={f.id} size={32} />Shop with {f.name}
           </button>
         ))}
@@ -89,19 +89,19 @@ function Invite() {
     setCopied(true)
   }
   if (!open) return (
-    <button onClick={() => setOpen(true)} className="flex w-full items-center gap-3 rounded-[20px] bg-white p-4 text-left shadow-[var(--shadow-soft)]">
-      <span className="grid h-10 w-10 place-items-center rounded-full bg-cream"><Plus size={18} strokeWidth={1.8} /></span>
+    <button onClick={() => setOpen(true)} className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-left shadow-[var(--shadow-soft)]">
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-cream"><Plus size={18} /></span>
       <span className="flex-1 leading-tight"><span className="block text-product font-semibold">Invite someone</span><span className="text-support text-ink-2">Family or friends, with a link</span></span>
       <ChevronRight size={18} className="text-ink-3" />
     </button>
   )
   return (
-    <section className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
+    <section className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
       <div className="text-product font-semibold">Invite someone</div>
-      <div className="mt-2 flex items-center gap-2 rounded-[14px] bg-cream px-3 py-2.5">
-        <Link2 size={16} strokeWidth={1.8} className="shrink-0 text-ink-2" />
-        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{link}</span>
-        <button onClick={copy} className={cx(small, 'h-8 bg-ink text-white')}><Copy size={13} />{copied ? 'Copied' : 'Copy'}</button>
+      <div className="mt-2 flex items-center gap-2 rounded-xl bg-cream px-3 py-2">
+        <Link2 size={16} className="shrink-0 text-ink-2" />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{link}</span>
+        <button onClick={copy} className={cx(small, 'h-8 bg-ink text-on-ink')}><Copy size={13} />{copied ? 'Copied' : 'Copy'}</button>
       </div>
       <p className="mt-2 text-micro text-ink-3">Sample link for the prototype. Nothing is sent and nobody is added.</p>
     </section>
@@ -115,23 +115,23 @@ export function FriendsPanel() {
   const friends = FRIENDS.filter((f) => f.relation === 'friend')
   return (
     <div className="flex flex-col gap-3 pb-2">
-      <div className="divide-y divide-soft rounded-[20px] bg-white px-3 shadow-[var(--shadow-soft)]">
+      <div className="divide-y divide-soft rounded-2xl bg-surface px-3 shadow-[var(--shadow-soft)]">
         <button onClick={() => useMall.getState().open({ kind: 'profile' })} className="flex w-full items-center gap-3 py-3 text-left">
           <FriendAvatar id="you" size={40} />
           <span className="flex-1 leading-tight"><span className="block text-product font-semibold">Rahul</span><span className="text-support text-ink-2">Your profile, orders and malls</span></span>
           <ChevronRight size={18} className="text-ink-3" />
         </button>
         <button onClick={() => useMall.getState().open({ kind: 'wallet' })} className="flex w-full items-center gap-3 py-3 text-left">
-          <span className="grid h-10 w-10 place-items-center rounded-full text-[15px] font-bold text-[#7A4A00]" style={{ background: 'radial-gradient(circle at 35% 30%, #F8DE8E, #E2A52B)' }}>N</span>
+          <span className="grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-[#7A4A00]" style={{ background: 'radial-gradient(circle at 35% 30%, #F8DE8E, #E2A52B)' }}>N</span>
           <span className="flex-1 leading-tight"><span className="block text-product font-semibold">NeuCoins</span><span className="text-support text-ink-2 tnum">{coins.toLocaleString('en-IN')} to spend across the group</span></span>
           <ChevronRight size={18} className="text-ink-3" />
         </button>
       </div>
       <SessionCard />
-      <div className="text-[15px] font-semibold">Family</div>
-      <div className="divide-y divide-soft rounded-[20px] bg-white px-4 shadow-[var(--shadow-soft)]">{fam.map((f) => <FriendRow key={f.id} f={f} />)}</div>
-      <div className="text-[15px] font-semibold">Friends</div>
-      <div className="divide-y divide-soft rounded-[20px] bg-white px-4 shadow-[var(--shadow-soft)]">{friends.map((f) => <FriendRow key={f.id} f={f} />)}</div>
+      <div className="text-sm font-semibold">Family</div>
+      <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">{fam.map((f) => <FriendRow key={f.id} f={f} />)}</div>
+      <div className="text-sm font-semibold">Friends</div>
+      <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">{friends.map((f) => <FriendRow key={f.id} f={f} />)}</div>
       <Invite />
       <p className="flex gap-2 text-micro text-ink-3"><ShieldCheck size={14} className="shrink-0" />Your own cart stays private. Friends see where you are only while you share a session. People and activity here are sample data.</p>
     </div>
@@ -162,11 +162,11 @@ export function FriendPanel({ id }: { id: string }) {
         {online && !withThem && <button onClick={() => joinFriend(id)} className={cx(small, 'bg-cream')}><MapPin size={15} />Go to {f.name}</button>}
         {online && (withThem
           ? <button onClick={endSession} className={cx(small, 'bg-cream')}>Leave session</button>
-          : <button onClick={() => startSession(id)} className={cx(small, 'bg-ink text-white')}><Users size={15} />Shop together</button>)}
+          : <button onClick={() => startSession(id)} className={cx(small, 'bg-ink text-on-ink')}><Users size={15} />Shop together</button>)}
       </div>
       <section>
         <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-[15px] font-semibold">{f.name}'s list</span>
+          <span className="text-sm font-semibold">{f.name}'s list</span>
           <span className="text-micro text-ink-2">Shared with you</span>
         </div>
         <div className="flex flex-col gap-2">
@@ -175,14 +175,14 @@ export function FriendPanel({ id }: { id: string }) {
             if (!p) return null
             const gifted = gifts[pid] === id
             return (
-              <div key={pid} className="flex items-center gap-3 rounded-[18px] bg-white p-2.5 shadow-[var(--shadow-soft)]">
-                <button onClick={() => useMall.getState().open({ kind: 'product', id: pid })} aria-label={`Details for ${p.name}`}><img src={thumb(pid) || undefined} alt="" className="h-12 w-12 rounded-[12px] bg-cream" /></button>
+              <div key={pid} className="flex items-center gap-3 rounded-2xl bg-surface p-2 shadow-[var(--shadow-soft)]">
+                <button onClick={() => useMall.getState().open({ kind: 'product', id: pid })} aria-label={`Details for ${p.name}`}><img src={thumb(pid) || undefined} alt="" className="h-12 w-12 rounded-xl bg-cream" /></button>
                 <div className="min-w-0 flex-1 leading-tight">
-                  <div className="truncate text-[14px] font-semibold">{p.name}</div>
+                  <div className="truncate text-sm font-semibold">{p.name}</div>
                   <div className="text-micro text-ink-2 tnum">{p.brand} · {inr(p.price)}</div>
                 </div>
                 <button onClick={() => add(pid, 1)} aria-label={`Add ${p.name} to your cart`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream"><Plus size={16} /></button>
-                <button onClick={() => giftTo(pid, id)} disabled={gifted} className={cx(small, gifted ? 'bg-[#FBEBDC] text-[#8F531B]' : 'bg-ink text-white')}>
+                <button onClick={() => giftTo(pid, id)} disabled={gifted} className={cx(small, gifted ? 'bg-tint text-promo-ink' : 'bg-ink text-on-ink')}>
                   <Gift size={14} />{gifted ? 'In cart' : 'Gift'}
                 </button>
               </div>
@@ -200,12 +200,12 @@ export function GiftPicker({ productId }: { productId: string }) {
   const [open, setOpen] = useState(false)
   const gift = useMall((s) => s.gifts[productId])
   if (gift) return (
-    <div className="flex items-center gap-2 rounded-[18px] bg-[#FBEBDC] px-4 py-3 text-support font-semibold text-[#8F531B]"><Gift size={16} />In your cart as a gift for {FRIEND_BY_ID[gift].name}</div>
+    <div className="flex items-center gap-2 rounded-2xl bg-tint px-4 py-3 text-support font-semibold text-promo-ink"><Gift size={16} />In your cart as a gift for {FRIEND_BY_ID[gift].name}</div>
   )
   return (
-    <section className="rounded-[18px] bg-white p-3 shadow-[var(--shadow-soft)]">
-      <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 text-left text-[14px] font-semibold">
-        <Gift size={16} strokeWidth={1.8} className="text-purple-ink" /><span className="flex-1">Send as a gift</span><ChevronRight size={16} className={cx('text-ink-3 transition-transform', open && 'rotate-90')} />
+    <section className="rounded-2xl bg-surface p-3 shadow-[var(--shadow-soft)]">
+      <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 text-left text-sm font-semibold">
+        <Gift size={16} className="text-purple-ink" /><span className="flex-1">Send as a gift</span><ChevronRight size={16} className={cx('text-ink-3 transition-transform', open && 'rotate-90')} />
       </button>
       {open && (
         <div className="mt-3 flex gap-3">

@@ -24,11 +24,11 @@ function markerTex(id: string) {
   g.fillStyle = f.tint
   g.beginPath(); g.arc(80, 74, 54, 0, Math.PI * 2); g.fill()
   g.fillStyle = '#FFFFFF'
-  g.font = '600 60px Inter, system-ui, sans-serif'
+  g.font = '600 60px Geist, system-ui, sans-serif'
   g.textAlign = 'center'; g.textBaseline = 'middle'
   g.fillText(f.name[0], 80, 78)
   // name tag
-  g.font = '600 26px Inter, system-ui, sans-serif'
+  g.font = '600 26px Geist, system-ui, sans-serif'
   const w = g.measureText(f.name).width + 28
   g.fillStyle = 'rgba(255,255,255,0.92)'
   g.beginPath(); g.roundRect(80 - w / 2, 160, w, 40, 20); g.fill()

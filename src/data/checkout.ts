@@ -1,9 +1,9 @@
-import type { LucideIcon } from 'lucide-react'
-import { Banknote, Building2, CreditCard, Home, Smartphone } from 'lucide-react'
+import type { AppIcon } from '../components/ui/icons'
+import { Banknote, Building2, CreditCard, Home, Smartphone } from '../components/ui/icons'
 
 // Checkout options for the prototype. Addresses are placeholders; no payment is ever taken.
 
-export type Address = { id: string; label: string; icon: LucideIcon; name: string; line: string; area: string }
+export type Address = { id: string; label: string; icon: AppIcon; name: string; line: string; area: string }
 export const ADDRESSES: Address[] = [
   { id: 'home', label: 'Home', icon: Home, name: 'Rahul', line: 'Flat 4B, 12th Main Road', area: 'Indiranagar, Bengaluru 560038' },
   { id: 'office', label: 'Office', icon: Building2, name: 'Rahul', line: '5th floor, Tower B', area: 'Koramangala, Bengaluru 560034' },
@@ -17,7 +17,7 @@ export const GIFT_AREA: Record<string, string> = {
   kavya: 'Koramangala, Bengaluru',
 }
 
-export type PayMethod = { id: string; label: string; detail: string; icon: LucideIcon }
+export type PayMethod = { id: string; label: string; detail: string; icon: AppIcon }
 export const PAY_METHODS: PayMethod[] = [
   { id: 'upi', label: 'UPI', detail: 'Pay with any UPI app', icon: Smartphone },
   { id: 'card', label: 'Card', detail: 'Credit or debit card', icon: CreditCard },

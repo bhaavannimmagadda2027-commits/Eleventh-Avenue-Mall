@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, Check, Info, MapPin, Search } from 'lucide-react'
+import { ArrowRight, Check, Info, MapPin, Search } from '../ui/icons'
 import { PRODUCTS, PRODUCT_BY_ID, alternatives } from '../../data/products'
 import { STORE_BY_ID } from '../../data/stores'
 import { PLACE } from '../../data/storeLayout'
 import { thumb } from '../../lib/productArt'
 import { Price, QtyControl } from '../products/ProductPreview'
 import { RewardsWallet } from '../rewards/RewardsWallet'
+import { AssistantPanel, NotificationsPanel, OffersPanel } from './HudPanels'
 import { FriendPanel, FriendsPanel, GiftPicker } from '../social/FriendsPanel'
 import { FRIEND_BY_ID } from '../../data/social'
 import { ADS } from '../../data/advertisements'
@@ -27,9 +28,9 @@ function StoreRow({ st, onGo }: { st: Store; onGo: () => void }) {
       <BrandMark name={st.name} bg={st.sign.bg} fg={st.sign.fg} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-product font-semibold">{st.name}</span>
-        <span className="mt-0.5 flex items-center gap-1 text-support text-ink-2"><Cat.icon size={13} strokeWidth={1.8} />{Cat.label} · {floorLabel(st)}</span>
+        <span className="mt-0.5 flex items-center gap-1 text-support text-ink-2"><Cat.icon size={13} />{Cat.label} · {floorLabel(st)}</span>
       </span>
-      <ArrowRight size={18} strokeWidth={1.8} className="text-ink-3" />
+      <ArrowRight size={18} className="text-ink-3" />
     </button>
   )
 }
@@ -45,9 +46,9 @@ function Directory() {
     <div className="flex flex-col gap-3 pb-2">
       <p className="text-support text-ink-2">{mall.stores.length} stores on two floors. Tap a store and NEU CART will take you there.</p>
       {cats.map((c) => (
-        <section key={c.id} className="rounded-[20px] bg-white px-4 py-1 shadow-[var(--shadow-soft)]">
+        <section key={c.id} className="rounded-2xl bg-surface px-4 py-1 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2 pb-0.5 pt-3 text-micro font-semibold uppercase tracking-[0.08em] text-ink-2">
-            <c.icon size={14} strokeWidth={1.8} className="text-purple-ink" />{c.label}
+            <c.icon size={14} className="text-purple-ink" />{c.label}
           </div>
           <div className="divide-y divide-soft">
             {mall.stores.filter((s) => s.category === c.id).map((st) => <StoreRow key={st.id} st={st} onGo={() => go(st)} />)}
@@ -69,40 +70,40 @@ function SearchPanel() {
   const products = useMemo(() => (t ? PRODUCTS.filter((p) => PLACE[p.id] && `${p.name} ${p.brand} ${p.section} ${p.desc}`.toLowerCase().includes(t)).slice(0, 8) : []), [t])
   return (
     <div className="flex flex-col gap-3 pb-2">
-      <label className="flex h-12 items-center gap-2.5 rounded-[16px] bg-white px-4 shadow-[var(--shadow-soft)]">
-        <Search size={18} strokeWidth={1.8} className="text-ink-2" />
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stores, categories or products" className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-3" />
+      <label className="flex h-12 items-center gap-2 rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
+        <Search size={18} className="text-ink-2" />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stores, categories or products" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-3" />
       </label>
       {!t && (
-        <div className="no-scrollbar -mx-5 flex gap-1.5 overflow-x-auto px-5">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           {CATEGORIES.filter((c) => mall.stores.some((s) => s.category === c.id)).map((c) => (
-            <button key={c.id} onClick={() => setQ(c.label)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-medium shadow-[var(--shadow-soft)]">
-              <c.icon size={15} strokeWidth={1.8} />{c.label}
+            <button key={c.id} onClick={() => setQ(c.label)} className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-surface px-3 text-xs font-medium shadow-[var(--shadow-soft)]">
+              <c.icon size={15} />{c.label}
             </button>
           ))}
         </div>
       )}
       {products.length > 0 && (
         <section>
-          <div className="mb-1.5 text-micro font-semibold uppercase tracking-[0.08em] text-ink-2">Products · tap to go to the shelf</div>
-          <div className="divide-y divide-soft rounded-[20px] bg-white px-4 shadow-[var(--shadow-soft)]">
+          <div className="mb-2 text-micro font-semibold uppercase tracking-[0.08em] text-ink-2">Products · tap to go to the shelf</div>
+          <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
             {products.map((p) => (
-              <button key={p.id} onClick={() => useMall.getState().seekProduct(p.id, 'preview')} className="flex w-full items-center gap-3 py-2.5 text-left">
-                <img src={thumb(p.id) || undefined} alt="" className="h-11 w-11 shrink-0 rounded-[12px] bg-cream" />
+              <button key={p.id} onClick={() => useMall.getState().seekProduct(p.id, 'preview')} className="flex w-full items-center gap-3 py-2 text-left">
+                <img src={thumb(p.id) || undefined} alt="" className="h-11 w-11 shrink-0 rounded-xl bg-cream" />
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate text-product font-semibold">{p.name}</span>
                   <span className="text-support text-ink-2">{STORE_BY_ID[p.storeId].name} · {p.size}</span>
                 </span>
-                <span className="text-[14px] font-semibold tnum">{inr(p.price)}</span>
+                <span className="text-sm font-semibold tnum">{inr(p.price)}</span>
               </button>
             ))}
           </div>
         </section>
       )}
       {(stores.length > 0 || !products.length) && (
-        <div className="divide-y divide-soft rounded-[20px] bg-white px-4 shadow-[var(--shadow-soft)]">
+        <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
           {stores.length ? stores.map((st) => <StoreRow key={st.id} st={st} onGo={() => go(st)} />) : (
-            <p className="py-5 text-support text-ink-2">Nothing matches “{q}”. Try milk, bread, Croma or beauty.</p>
+            <p className="py-4 text-support text-ink-2">Nothing matches “{q}”. Try milk, bread, Croma or beauty.</p>
           )}
         </div>
       )}
@@ -116,19 +117,19 @@ function CampaignStats() {
   const total = Object.values(taps).reduce((a, b) => a + b, 0)
   const top = [...ADS].sort((a, b) => (taps[b.id] ?? 0) - (taps[a.id] ?? 0)).slice(0, 3)
   return (
-    <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
+    <div className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
       <div className="flex items-baseline justify-between">
-        <span className="text-[15px] font-semibold">Brand campaigns</span>
+        <span className="text-sm font-semibold">Brand campaigns</span>
         <span className="text-micro text-ink-2">This session</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <div className="rounded-[14px] bg-cream p-3"><div className="text-[22px] font-semibold tnum">{ADS.length}</div><div className="text-micro text-ink-2">Live in this mall</div></div>
-        <div className="rounded-[14px] bg-cream p-3"><div className="text-[22px] font-semibold tnum">{total}</div><div className="text-micro text-ink-2">Ad taps</div></div>
+        <div className="rounded-xl bg-cream p-3"><div className="text-xl font-semibold tnum">{ADS.length}</div><div className="text-micro text-ink-2">Live in this mall</div></div>
+        <div className="rounded-xl bg-cream p-3"><div className="text-xl font-semibold tnum">{total}</div><div className="text-micro text-ink-2">Ad taps</div></div>
       </div>
       {total > 0 && (
         <div className="mt-2 divide-y divide-soft">
           {top.filter((a) => taps[a.id]).map((a) => (
-            <div key={a.id} className="flex justify-between py-1.5 text-support"><span className="truncate">{a.brand} · {a.title.replace('\n', ' ')}</span><span className="tnum text-ink-2">{taps[a.id]}</span></div>
+            <div key={a.id} className="flex justify-between py-2 text-support"><span className="truncate">{a.brand} · {a.title.replace('\n', ' ')}</span><span className="tnum text-ink-2">{taps[a.id]}</span></div>
           ))}
         </div>
       )}
@@ -141,17 +142,17 @@ function Orders() {
   const orders = useMall((s) => s.orders)
   if (!orders.length) return null
   return (
-    <section className="rounded-[20px] bg-white px-4 py-1 shadow-[var(--shadow-soft)]">
-      <div className="flex items-baseline justify-between pb-1 pt-3"><span className="text-[15px] font-semibold">Your orders</span><span className="text-micro text-ink-2">Simulated</span></div>
+    <section className="rounded-2xl bg-surface px-4 py-1 shadow-[var(--shadow-soft)]">
+      <div className="flex items-baseline justify-between pb-1 pt-3"><span className="text-sm font-semibold">Your orders</span><span className="text-micro text-ink-2">Simulated</span></div>
       <div className="divide-y divide-soft">
         {orders.map((o) => (
           <div key={o.id} className="flex items-center gap-3 py-3">
             <span className="flex shrink-0">{o.deliveries.map((d) => { const st = STORE_BY_ID[d.storeId]; return <span key={d.storeId} className="-ml-2 first:ml-0"><BrandMark name={st.name} bg={st.sign.bg} fg={st.sign.fg} size={26} /></span> })}</span>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="truncate text-[14px] font-semibold"><span className="tnum">{o.id}</span>{o.family ? ' · Family' : ''}</div>
+              <div className="truncate text-sm font-semibold"><span className="tnum">{o.id}</span>{o.family ? ' · Family' : ''}</div>
               <div className="truncate text-micro text-ink-2">{o.count} items · {o.deliveries.length} deliver{o.deliveries.length > 1 ? 'ies' : 'y'} · {o.address}</div>
             </div>
-            <div className="text-right leading-tight"><div className="text-[14px] font-semibold tnum">{inr(o.total)}</div><div className="text-micro text-success">On the way</div></div>
+            <div className="text-right leading-tight"><div className="text-sm font-semibold tnum">{inr(o.total)}</div><div className="text-micro text-success">On the way</div></div>
           </div>
         ))}
       </div>
@@ -163,17 +164,17 @@ function ProfilePanel() {
   const mallId = useMall((s) => s.mallId)
   return (
     <div className="flex flex-col gap-3 pb-2">
-      <div className="flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
-        <span className="grid h-12 w-12 place-items-center rounded-full bg-purple-soft text-[18px] font-semibold text-purple-ink">R</span>
+      <div className="flex items-center gap-3 rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-purple-soft text-lg font-semibold text-purple-ink">R</span>
         <div className="leading-tight"><div className="text-product font-semibold">Rahul</div><div className="text-support text-ink-2">Indiranagar, Bengaluru</div></div>
       </div>
       <Orders />
       <CampaignStats />
-      <div className="text-[15px] font-semibold">Malls</div>
-      <div className="divide-y divide-soft rounded-[20px] bg-white px-4 shadow-[var(--shadow-soft)]">
+      <div className="text-sm font-semibold">Malls</div>
+      <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
         {MALLS.map((m) => (
           <button key={m.id} disabled={!m.available} onClick={() => useMall.getState().selectMall(m.id)} className="flex w-full items-center gap-3 py-3 text-left disabled:cursor-default">
-            <span className="grid h-9 w-9 place-items-center rounded-[11px] text-[15px] font-semibold text-white" style={{ background: m.tone }}>{m.initial}</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl text-sm font-semibold text-white" style={{ background: m.tone }}>{m.initial}</span>
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block text-product font-semibold">{m.name}</span>
               <span className="text-support text-ink-2">{m.group} · {m.city}</span>
@@ -195,7 +196,7 @@ function ProductPanel({ id }: { id: string }) {
   const mins = 2 + (p.id.length % 5)
   return (
     <div className="flex flex-col gap-4 pb-2">
-      <div className="grid h-[210px] place-items-center rounded-[24px] bg-[radial-gradient(circle_at_50%_40%,#FFFFFF,#F1EDE5)]">
+      <div className="grid h-[210px] place-items-center rounded-3xl bg-cream">
         {thumb(p.id) && <img src={thumb(p.id) || undefined} alt={p.name} className="h-[200px] w-[200px]" />}
       </div>
       <div className="leading-tight">
@@ -205,21 +206,21 @@ function ProductPanel({ id }: { id: string }) {
         <div className="mt-2 flex items-center gap-2"><Price p={p} big />{p.offer && <Badge tone="promo">{p.offer}</Badge>}</div>
         <p className="mt-2 text-support text-ink-2">{p.desc}</p>
       </div>
-      <div className="flex items-center gap-3 rounded-[18px] bg-white p-3 shadow-[var(--shadow-soft)]">
+      <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-[var(--shadow-soft)]">
         <BrandMark name={st.name} bg={st.sign.bg} fg={st.sign.fg} size={34} />
-        <div className="min-w-0 flex-1 leading-tight"><div className="text-[14px] font-semibold">{st.name}</div><div className="text-micro text-ink-2">{st.fulfilment}</div></div>
+        <div className="min-w-0 flex-1 leading-tight"><div className="text-sm font-semibold">{st.name}</div><div className="text-micro text-ink-2">{st.fulfilment}</div></div>
       </div>
       <GiftPicker productId={p.id} />
       {p.tray && (
-        <section className="overflow-hidden rounded-[20px] bg-white shadow-[var(--shadow-soft)]">
+        <section className="overflow-hidden rounded-2xl bg-surface shadow-[var(--shadow-soft)]">
           <div className="relative">
             <img src={p.tray} alt={`Overhead camera view of the ${p.name} tray`} className="block aspect-[382/162] w-full object-cover" />
-            <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-[rgb(38_38_38/0.6)] px-2.5 py-1 text-micro font-semibold text-white">
+            <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-2 rounded-full bg-[rgb(38_38_38/0.6)] px-2 py-1 text-micro font-semibold text-white">
               <span className="h-1.5 w-1.5 rounded-full bg-[#E5484D]" />LIVE · Tray {p.id.slice(0, 2).toUpperCase()}-{(p.id.length % 9) + 1}
             </span>
           </div>
           <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="leading-tight"><div className="text-[14px] font-semibold">Dark-store produce view</div><div className="text-micro text-ink-2">Updated {mins} min ago · In stock</div></div>
+            <div className="leading-tight"><div className="text-sm font-semibold">Dark-store produce view</div><div className="text-micro text-ink-2">Updated {mins} min ago · In stock</div></div>
             <Badge tone="success">Picked from this tray</Badge>
           </div>
           <p className="px-4 pb-3 text-micro text-ink-3">Visual inventory preview. In this prototype the photo is a sample image, not a live camera.</p>
@@ -227,19 +228,19 @@ function ProductPanel({ id }: { id: string }) {
       )}
       {alts.length > 0 && (
         <section>
-          <div className="mb-2 text-[15px] font-semibold">Alternatives</div>
-          <div className="no-scrollbar -mx-5 flex snap-x gap-2 overflow-x-auto px-5">
+          <div className="mb-2 text-sm font-semibold">Alternatives</div>
+          <div className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4">
             {alts.map((a) => (
-              <button key={a.id} onClick={() => useMall.getState().open({ kind: 'product', id: a.id })} className="w-[120px] shrink-0 snap-start rounded-[16px] bg-white p-2 text-left shadow-[var(--shadow-soft)]">
+              <button key={a.id} onClick={() => useMall.getState().open({ kind: 'product', id: a.id })} className="w-[120px] shrink-0 snap-start rounded-2xl bg-surface p-2 text-left shadow-[var(--shadow-soft)]">
                 <img src={thumb(a.id) || undefined} alt="" className="mx-auto h-[84px] w-[84px]" />
-                <div className="mt-1 truncate text-[13px] font-semibold">{a.name.split(',')[0]}</div>
+                <div className="mt-1 truncate text-xs font-semibold">{a.name.split(',')[0]}</div>
                 <div className="text-micro text-ink-2 tnum">{inr(a.price)} · {a.size}</div>
               </button>
             ))}
           </div>
         </section>
       )}
-      <div className="sticky bottom-0 -mx-5 flex gap-2 bg-bg px-5 pt-2">
+      <div className="sticky bottom-0 -mx-4 flex gap-2 bg-bg px-4 pt-2">
         <QtyControl p={p} size="lg" from={preview?.id === p.id ? preview.from : null} />
       </div>
     </div>
@@ -255,23 +256,23 @@ function AdPanel({ id }: { id: string }) {
   useMall((s) => s.thumbsReady)
   return (
     <div className="flex flex-col gap-3 pb-2">
-      <div className="relative overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)]">
+      <div className="relative overflow-hidden rounded-2xl shadow-[var(--shadow-soft)]">
         <img src={img} alt={`${ad.brand} campaign`} className="block w-full" />
       </div>
       <div>
         <Badge tone="purple">Sponsored</Badge>
         <div className="mt-2 text-store font-semibold tracking-[-0.01em]">{ad.offer}</div>
-        {st && <div className="mt-0.5 flex items-center gap-1 text-support text-ink-2"><MapPin size={13} strokeWidth={1.8} />{st.name} · {floorLabel(st)}</div>}
+        {st && <div className="mt-0.5 flex items-center gap-1 text-support text-ink-2"><MapPin size={13} />{st.name} · {floorLabel(st)}</div>}
       </div>
-      <div className="flex gap-2 rounded-[16px] bg-white p-3 text-support text-ink-2 shadow-[var(--shadow-soft)]">
-        <Info size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-ink-3" />
+      <div className="flex gap-2 rounded-2xl bg-surface p-3 text-support text-ink-2 shadow-[var(--shadow-soft)]">
+        <Info size={16} className="mt-0.5 shrink-0 text-ink-3" />
         <span>Brands pay to appear on panels around the mall. Ads stay on walls and screens and never cover products or interrupt checkout. Illustrative campaign.</span>
       </div>
       {product && (
-        <div className="flex items-center gap-3 rounded-[18px] bg-white p-3 shadow-[var(--shadow-soft)]">
-          <img src={thumb(product.id) || undefined} alt="" className="h-14 w-14 shrink-0 rounded-[14px] bg-cream" />
+        <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 shadow-[var(--shadow-soft)]">
+          <img src={thumb(product.id) || undefined} alt="" className="h-14 w-14 shrink-0 rounded-xl bg-cream" />
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-[14px] font-semibold">{product.name}</div>
+            <div className="truncate text-sm font-semibold">{product.name}</div>
             <div className="text-micro text-ink-2">{product.brand} · {product.size}</div>
             <div className="mt-0.5"><Price p={product} /></div>
           </div>
@@ -296,7 +297,7 @@ function StorePanel({ id }: { id: string }) {
         <BrandMark name={st.name} bg={st.sign.bg} fg={st.sign.fg} size={48} />
         <div className="leading-tight">
           <div className="text-store font-semibold">{st.name}</div>
-          <div className="flex items-center gap-1 text-support text-ink-2"><Cat.icon size={13} strokeWidth={1.8} />{Cat.label} · {floorLabel(st)}</div>
+          <div className="flex items-center gap-1 text-support text-ink-2"><Cat.icon size={13} />{Cat.label} · {floorLabel(st)}</div>
         </div>
       </div>
       <p className="text-support text-ink-2">{st.tagline}. {st.level ? 'Take the escalators at the centre of the mall to the first floor.' : ''}</p>
@@ -323,6 +324,9 @@ export function Panels() {
     : panel?.kind === 'store' ? 'Store'
     : panel?.kind === 'product' ? ''
     : panel?.kind === 'friends' ? 'People'
+    : panel?.kind === 'assistant' ? 'AI Assistant'
+    : panel?.kind === 'notifications' ? 'Notifications'
+    : panel?.kind === 'offers' ? 'Offers'
     : panel?.kind === 'friend' ? FRIEND_BY_ID[panel.id]?.label ?? ''
     : ''
   return (
@@ -337,6 +341,9 @@ export function Panels() {
         {panel?.kind === 'product' && <ProductPanel id={panel.id} />}
         {panel?.kind === 'friends' && <FriendsPanel />}
         {panel?.kind === 'friend' && <FriendPanel id={panel.id} />}
+        {panel?.kind === 'assistant' && <AssistantPanel listen={panel.listen} />}
+        {panel?.kind === 'notifications' && <NotificationsPanel />}
+        {panel?.kind === 'offers' && <OffersPanel />}
       </div>
     </Sheet>
   )

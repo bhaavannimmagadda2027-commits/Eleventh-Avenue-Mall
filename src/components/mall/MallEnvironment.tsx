@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { FriendMarkers } from '../social/FriendMarkers'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
@@ -12,6 +12,7 @@ import { MallStorefronts } from './MallStorefronts'
 import { MallDirectory } from './MallDirectory'
 import { MallAdvertisements } from './MallAdvertisements'
 import { Fountain } from './Fountain'
+import { WayChevrons } from './WayChevrons'
 import { Escalators } from './Escalators'
 import { Greenery } from './Greenery'
 import { EntranceMat, Shoppers, SunRays } from './Ambience'
@@ -22,9 +23,9 @@ import { setReflections } from '../../lib/quality'
 
 /** 11 am daylight: soft sky fill, a warm sun through the glass roof, gentle reflections. */
 const MOOD = {
-  neutral: { sky: '#FDF8EE', sun: '#FFE6C4' },
-  warm: { sky: '#FFF6EC', sun: '#FFE6C8' }, // beauty, home: a touch warmer
-  cool: { sky: '#F6F9FD', sun: '#FBF7EF' }, // electronics: cooler, still daylight
+  neutral: { sky: '#FFE6C4', sun: '#FFCF96' },
+  warm: { sky: '#FFE2C2', sun: '#FFC893' }, // beauty, home: a touch warmer
+  cool: { sky: '#FFEEDB', sun: '#FFE0BC' }, // electronics: a little cooler
 }
 
 function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | null> }) {
@@ -37,11 +38,11 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
   }, [loc, sun])
   return (
     <>
-      <hemisphereLight ref={sky} args={['#FDFBF6', '#BFB29C', 0.62]} />
+      <hemisphereLight ref={sky} args={['#FFDDB0', '#4A3524', 0.46]} />
       <directionalLight
         ref={sun}
-        color="#FFF1DC"
-        intensity={2.1}
+        color="#FFCF96"
+        intensity={1.5}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
@@ -55,7 +56,7 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
         shadow-camera-near={1}
         shadow-camera-far={70}
       />
-      <directionalLight color="#EAF1FF" intensity={0.35} position={[-8, 10, -20]} />
+      <directionalLight color="#FFD9A8" intensity={0.3} position={[-8, 10, -20]} />
     </>
   )
 }
@@ -63,8 +64,19 @@ function MallLighting({ sun }: { sun: React.RefObject<THREE.DirectionalLight | n
 /** Only the place you're in is drawn: the lobby, or the store you walked into. */
 function Locations() {
   const loc = useMall((s) => s.location)
+  const root = useRef<THREE.Group>(null)
+  // printed signs and facades ignore scene lights, so give them the same warm evening cast
+  useLayoutEffect(() => {
+    const seen = new Set<THREE.Material>()
+    root.current?.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined
+      if (!m || Array.isArray(m) || seen.has(m) || !m.isMeshBasicMaterial || !m.map || !m.fog || !m.toneMapped) return
+      seen.add(m)
+      m.color.set('#C8AE8E')
+    })
+  }, [])
   return (
-    <>
+    <group ref={root}>
       <group visible={loc === 'lobby'}>
         <MallArchitecture />
         <MallStorefronts />
@@ -82,7 +94,7 @@ function Locations() {
           <StoreInterior id={id} />
         </group>
       ))}
-    </>
+    </group>
   )
 }
 
@@ -147,6 +159,7 @@ function DevHook() {
 
 export function MallEnvironment() {
   const sun = useRef<THREE.DirectionalLight>(null)
+  const frozen = useMall((m) => m.sceneFrozen)
   return (
     <Canvas
       className="!absolute inset-0 touch-none"
@@ -154,21 +167,23 @@ export function MallEnvironment() {
       aria-label="3D view of the mall. Drive NEU CART with the joystick or the arrow keys; stores, shelves and ads can be tapped. Every action is also available from the menus."
       shadows={{ type: THREE.PCFShadowMap }}
       dpr={[1, 2]}
+      frameloop={frozen ? 'never' : 'always'}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       camera={{ fov: 62, near: 0.05, far: 260, position: [0, 3.9, 6.6] }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 0.9
-        scene.background = new THREE.Color('#EEF2F2')
-        scene.fog = new THREE.Fog('#F1EEE7', 45, 120)
+        gl.toneMappingExposure = 0.94
+        scene.background = new THREE.Color('#BFD6E6')
+        scene.fog = new THREE.Fog('#C9A67C', 42, 118)
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-        scene.environmentIntensity = 0.5
+        scene.environmentIntensity = 0.34
       }}
     >
       <MallLighting sun={sun} />
       <Locations />
       <CartRig sun={sun} />
+      <WayChevrons />
       <FriendMarkers />
       <AdTicker />
       <PerfGovernor />

@@ -46,7 +46,7 @@ export function CoinBurst() {
               />
             ))}
             <motion.span
-              className="absolute rounded-full bg-[#F7E7B4] px-2 py-0.5 text-[12px] font-semibold text-[#7A4A00] tnum"
+              className="absolute rounded-full bg-[#F7E7B4] px-2 py-0.5 text-xs font-semibold text-[#7A4A00] tnum"
               style={{ left: b.to.x - 70, top: b.to.y + 22 }}
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}

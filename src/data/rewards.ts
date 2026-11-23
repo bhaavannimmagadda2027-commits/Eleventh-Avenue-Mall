@@ -1,10 +1,10 @@
-import type { LucideIcon } from 'lucide-react'
-import { Coffee, Hotel, Plane, ShoppingBag, Sparkles } from 'lucide-react'
+import type { AppIcon } from '../components/ui/icons'
+import { Coffee, Hotel, Plane, ShoppingBag, Sparkles } from '../components/ui/icons'
 
 // NeuCoins can be spent across the wider group, not just in the mall. All values are illustrative.
 export type RedeemCategory = 'flights' | 'hotels' | 'restaurants' | 'shopping' | 'experiences'
 
-export const REDEEM_CATEGORIES: { id: RedeemCategory; label: string; icon: LucideIcon }[] = [
+export const REDEEM_CATEGORIES: { id: RedeemCategory; label: string; icon: AppIcon }[] = [
   { id: 'flights', label: 'Flights', icon: Plane },
   { id: 'hotels', label: 'Hotels', icon: Hotel },
   { id: 'restaurants', label: 'Restaurants', icon: Coffee },
@@ -37,10 +37,12 @@ export const REDEMPTIONS: Redemption[] = [
 
 /** Membership tiers by NeuCoins earned over the last 12 months. */
 export const TIERS = [
-  { name: 'Neu', from: 0, perk: '1 NeuCoin per ₹100' },
-  { name: 'Neu Plus', from: 5000, perk: 'Free delivery on every order' },
-  { name: 'Neu Gold', from: 10000, perk: '1.5× NeuCoins in every store' },
+  { name: 'Neu', from: 0, perk: '1 NeuCoin per ₹100', freeDelivery: false, coinRate: 1 },
+  { name: 'Neu Plus', from: 5000, perk: 'Free delivery on every order', freeDelivery: true, coinRate: 1 },
+  { name: 'Neu Gold', from: 10000, perk: '1.5× NeuCoins in every store', freeDelivery: true, coinRate: 1.5 },
 ]
+
+export const tierFor = (yearEarned: number) => [...TIERS].reverse().find((t) => yearEarned >= t.from) ?? TIERS[0]
 
 export type Activity = { id: string; label: string; detail: string; amount: number; when: string }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { animate, motion } from 'framer-motion'
-import { Gift, Home, PackageCheck } from 'lucide-react'
+import { Gift, Home, PackageCheck } from '../ui/icons'
 import { FRIEND_BY_ID } from '../../data/social'
 import { GIFT_AREA } from '../../data/checkout'
 import { PRODUCT_BY_ID } from '../../data/products'
@@ -57,10 +57,10 @@ export function OrderConfirmation() {
   return (
     <>
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-[calc(28px+env(safe-area-inset-top))]">
-        <div className="mx-auto flex max-w-[560px] flex-col items-center gap-5">
+        <div className="mx-auto flex max-w-[560px] flex-col items-center gap-4">
           <Tick />
           <motion.div {...rise(0)} className="text-center" role="status">
-            <h2 className="text-[28px] font-semibold tracking-[-0.02em]">Order placed</h2>
+            <h2 className="text-2xl font-semibold tracking-[-0.02em]">Order placed</h2>
             <p className="mt-1 text-support text-ink-2">
               <span className="tnum">{order.id}</span> · {cod ? <>{inr(order.total)} to pay on delivery</> : <>{inr(order.total)} paid by {order.pay}</>}
             </p>
@@ -68,24 +68,24 @@ export function OrderConfirmation() {
           </motion.div>
 
           <motion.div {...rise(1)} className="grid w-full grid-cols-2 gap-2">
-            <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
+            <div className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
               <div className="text-micro font-semibold uppercase tracking-[0.06em] text-ink-2">NeuCoins earned</div>
-              <div className="mt-1 flex items-center gap-2 text-[26px] font-semibold tnum">
-                <span className="grid h-7 w-7 place-items-center rounded-full text-[12px] font-bold text-[#7A4A00]" style={{ background: 'radial-gradient(circle at 35% 30%, #F8DE8E, #E2A52B)' }}>N</span>
+              <div className="mt-1 flex items-center gap-2 text-2xl font-semibold tnum">
+                <span className="grid h-7 w-7 place-items-center rounded-full text-xs font-bold text-[#7A4A00]" style={{ background: 'radial-gradient(circle at 35% 30%, #F8DE8E, #E2A52B)' }}>N</span>
                 +<CountUp to={order.coinsEarned} />
               </div>
               <div className="text-micro text-ink-2">Balance {coins.toLocaleString('en-IN')}</div>
             </div>
-            <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
+            <div className="rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
               <div className="text-micro font-semibold uppercase tracking-[0.06em] text-ink-2">You saved</div>
-              <div className="mt-1 text-[26px] font-semibold text-success tnum">{inr(order.saved)}</div>
+              <div className="mt-1 text-2xl font-semibold text-success tnum">{inr(order.saved)}</div>
               <div className="text-micro text-ink-2">{order.coinsUsed ? `incl. ${inr(order.coinsUsed)} in NeuCoins` : 'Offers and discounts'}</div>
             </div>
           </motion.div>
 
-          <motion.section {...rise(2)} className="w-full rounded-[20px] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <motion.section {...rise(2)} className="w-full rounded-2xl bg-surface p-4 shadow-[var(--shadow-soft)]">
             <div className="mb-3 flex items-baseline justify-between">
-              <h3 className="text-[15px] font-semibold">On the way</h3>
+              <h3 className="text-sm font-semibold">On the way</h3>
               <span className="text-micro text-ink-2">{order.deliveries.length} deliver{order.deliveries.length > 1 ? 'ies' : 'y'}</span>
             </div>
             <ol className="relative">
@@ -97,12 +97,12 @@ export function OrderConfirmation() {
                     <span className="relative"><BrandMark name={st.name} bg={st.sign.bg} fg={st.sign.fg} size={32} /></span>
                     <div className="min-w-0 flex-1 leading-tight">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-[14px] font-semibold">{d.label} · {st.name}</span>
-                        <span className={cx('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold', i === 0 ? 'bg-purple-soft text-purple-ink' : 'bg-cream text-ink-2')}>{i === 0 ? 'Packing' : 'Confirmed'}</span>
+                        <span className="truncate text-sm font-semibold">{d.label} · {st.name}</span>
+                        <span className={cx('shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold', i === 0 ? 'bg-purple-soft text-purple-ink' : 'bg-cream text-ink-2')}>{i === 0 ? 'Packing' : 'Confirmed'}</span>
                       </div>
                       <div className="text-micro text-ink-2">{d.count} item{d.count > 1 ? 's' : ''} · {d.eta}</div>
-                      <div className="mt-1.5 flex gap-1">
-                        {d.productIds.slice(0, 6).map((id) => <img key={id} src={thumb(id) || undefined} alt="" className="h-8 w-8 rounded-[9px] bg-cream" />)}
+                      <div className="mt-2 flex gap-1">
+                        {d.productIds.slice(0, 6).map((id) => <img key={id} src={thumb(id) || undefined} alt="" className="h-8 w-8 rounded-lg bg-cream" />)}
                       </div>
                     </div>
                   </li>
@@ -110,13 +110,13 @@ export function OrderConfirmation() {
               })}
               <li className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-purple text-white"><Home size={15} /></span>
-                <span className="text-[14px] font-semibold">{order.address}</span>
+                <span className="text-sm font-semibold">{order.address}</span>
               </li>
             </ol>
           </motion.section>
 
           {order.gifts.length > 0 && (
-            <motion.section {...rise(3)} className="w-full rounded-[20px] bg-[#FBEBDC] p-4 text-[#8A5220]">
+            <motion.section {...rise(3)} className="w-full rounded-2xl bg-tint p-4 text-promo-ink">
               {order.gifts.map((g) => (
                 <div key={g.productId} className="flex items-center gap-2 py-1 text-support">
                   <Gift size={16} className="shrink-0" />
@@ -126,12 +126,12 @@ export function OrderConfirmation() {
             </motion.section>
           )}
 
-          <motion.p {...rise(4)} className="flex items-center gap-1.5 text-center text-micro text-ink-3">
+          <motion.p {...rise(4)} className="flex items-center gap-2 text-center text-micro text-ink-3">
             <PackageCheck size={13} />Simulated order. Nothing was charged and nothing will be delivered.
           </motion.p>
         </div>
       </div>
-      <footer className="shrink-0 border-t border-soft bg-white/90 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <footer className="shrink-0 border-t border-soft bg-surface/90 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
         <div className="mx-auto flex max-w-[560px] gap-2">
           <Button variant="quiet" size="lg" className="flex-1" onClick={() => { closeCheckout(); open({ kind: 'profile' }) }}>Your orders</Button>
           <Button size="lg" className="flex-[1.4]" onClick={closeCheckout}>Back to the mall</Button>

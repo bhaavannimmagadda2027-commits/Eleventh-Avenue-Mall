@@ -30,7 +30,7 @@ export default function App() {
   return (
     // reducedMotion="user": every Framer animation becomes a simple fade when the OS asks for less motion
     <MotionConfig reducedMotion="user">
-    <div className="relative h-full w-full overflow-hidden bg-bg">
+    <div className={`relative h-full w-full overflow-hidden bg-bg ${view === 'mall' ? 'theme-light' : ''}`}>
       <MallEnvironment />
       <AnimatePresence>
         {view === 'landing' && <LandingPage key="landing" />}
@@ -40,7 +40,7 @@ export default function App() {
         {fading && (
           <motion.div
             key="fade"
-            className="absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_45%,#FFFDF8,#F1ECE3)]"
+            className="absolute inset-0 z-20 bg-bg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

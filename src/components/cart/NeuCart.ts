@@ -34,7 +34,7 @@ export type NeuCartModel = {
   drawConsole: (count: number, total: string) => void
 }
 
-/** NEU CART: white/silver body, brushed aluminium frame, black console, four wheels, a hint of purple light. */
+/** NEU CART: white pod body, solid brushed basket, black handle, a bright console and blue light lines. */
 export function buildNeuCart(): NeuCartModel {
   const root = new THREE.Group()
   const body = new THREE.Group()
@@ -43,7 +43,7 @@ export function buildNeuCart(): NeuCartModel {
   const alu = new THREE.MeshStandardMaterial({ color: '#C6C8CB', roughness: 0.28, metalness: 0.85 })
   const black = new THREE.MeshStandardMaterial({ color: '#1C1C1E', roughness: 0.35, metalness: 0.2 })
   const tyre = new THREE.MeshStandardMaterial({ color: '#2A2A2C', roughness: 0.7 })
-  const glow = new THREE.MeshBasicMaterial({ color: '#A79BE0', toneMapped: false })
+  const glow = new THREE.MeshBasicMaterial({ color: '#5AA9FF', toneMapped: false })
 
   const chassis = slab(roundRect(0.96, 1.12, 0.24), 0.22, 0.04, shell)
   chassis.position.y = 0.17
@@ -52,7 +52,7 @@ export function buildNeuCart(): NeuCartModel {
   skirt.position.y = 0.13
   body.add(skirt)
   ;[-1, 1].forEach((s) => {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.016, 0.7), glow)
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.03, 0.86), glow)
     strip.position.set(s * 0.505, 0.29, 0)
     body.add(strip)
   })
@@ -83,7 +83,7 @@ export function buildNeuCart(): NeuCartModel {
     t.anisotropy = 8
     return t
   })()
-  const wire = new THREE.MeshStandardMaterial({ color: '#B9BCC0', alphaMap: grid, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.3, metalness: 0.8 })
+  const wire = new THREE.MeshStandardMaterial({ color: '#8F9297', bumpMap: grid, bumpScale: 0.25, side: THREE.DoubleSide, roughness: 0.34, metalness: 0.72 })
   const H = 0.5, y0 = 0.42
   const sideL = new THREE.Mesh(new THREE.PlaneGeometry(1.02, H), wire)
   sideL.rotation.y = Math.PI / 2
@@ -95,11 +95,11 @@ export function buildNeuCart(): NeuCartModel {
   const back = front.clone()
   back.position.z = 0.51
   ;[sideL, sideR, front, back].forEach((m) => { m.userData.noShadow = true; body.add(m) })
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.02), new THREE.MeshStandardMaterial({ color: '#E9E9E7', roughness: 0.5 }))
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.02), new THREE.MeshStandardMaterial({ color: '#6F7276', roughness: 0.45, metalness: 0.5 }))
   floor.rotation.x = -Math.PI / 2
   floor.position.y = y0 + 0.01
   body.add(floor)
-  const rim = slab(roundRect(1.0, 1.14, 0.2, [0.84, 0.98, 0.14]), 0.05, 0.014, shell)
+  const rim = slab(roundRect(1.08, 1.22, 0.24, [0.84, 0.98, 0.14]), 0.07, 0.02, shell)
   rim.position.y = y0 + H
   body.add(rim)
   // aluminium posts at the corners
@@ -110,16 +110,16 @@ export function buildNeuCart(): NeuCartModel {
   })
 
   // handle and black console on the shopper's side
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.86, 18), alu)
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.98, 20), black)
   handle.rotation.z = Math.PI / 2
   handle.position.set(0, y0 + H + 0.07, 0.68)
   body.add(handle)
   ;[-1, 1].forEach((s) => {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.04, 0.17), alu)
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.2), shell)
     arm.position.set(s * 0.42, y0 + H + 0.05, 0.6)
     body.add(arm)
   })
-  const con = slab(roundRect(0.6, 0.18, 0.06), 0.03, 0.01, black)
+  const con = slab(roundRect(0.72, 0.22, 0.07), 0.03, 0.01, black)
   con.rotation.x = 1.2
   con.position.set(0, y0 + H - 0.16, 0.6)
   body.add(con)
@@ -129,7 +129,7 @@ export function buildNeuCart(): NeuCartModel {
   const ct = new THREE.CanvasTexture(canvas)
   ct.colorSpace = THREE.SRGBColorSpace
   ct.anisotropy = 8
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.118), new THREE.MeshBasicMaterial({ map: ct, toneMapped: false }))
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.144), new THREE.MeshBasicMaterial({ map: ct, toneMapped: false }))
   screen.rotation.x = -0.37
   screen.position.set(0, y0 + H - 0.14, 0.636)
   body.add(screen)
@@ -153,11 +153,17 @@ export function buildNeuCart(): NeuCartModel {
   const drawConsole = (count: number, total: string) => {
     const w = 512, h = 112
     ctx.clearRect(0, 0, w, h)
-    ctx.fillStyle = '#141416'; rr(ctx, 0, 0, w, h, 26); ctx.fill()
+    ctx.fillStyle = '#0C1020'; rr(ctx, 0, 0, w, h, 26); ctx.fill()
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#B9AFEA'; ctx.font = `600 28px ${font.family}`; ctx.fillText('NEU CART', 26, h / 2)
-    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'right'; ctx.font = `600 32px ${font.family}`
-    ctx.fillText(count ? `${count} item${count > 1 ? 's' : ''}  ·  ${total}` : 'Ready', w - 26, h / 2 + 1)
+    // cart glyph
+    ctx.strokeStyle = '#5AA9FF'; ctx.fillStyle = '#5AA9FF'; ctx.lineWidth = 6; ctx.lineJoin = 'round'
+    ctx.beginPath(); ctx.moveTo(30, 34); ctx.lineTo(44, 34); ctx.lineTo(54, 70); ctx.lineTo(92, 70); ctx.lineTo(100, 44); ctx.lineTo(48, 44); ctx.stroke()
+    ctx.beginPath(); ctx.arc(60, 84, 6, 0, 7); ctx.arc(88, 84, 6, 0, 7); ctx.fill()
+    ctx.font = `600 52px ${font.family}`; ctx.fillText(String(count), 118, h / 2 + 2)
+    const nw = ctx.measureText(String(count)).width
+    ctx.fillStyle = '#C8D4E8'; ctx.font = `500 24px ${font.family}`; ctx.fillText('Items', 118 + nw + 14, h / 2 + 8)
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'right'; ctx.font = `600 38px ${font.family}`
+    ctx.fillText(total, w - 26, h / 2 + 2)
     ctx.textAlign = 'left'
     ct.needsUpdate = true
   }

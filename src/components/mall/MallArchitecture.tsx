@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { L, addRect } from '../../data/layout'
-import { exteriorTex, floorTex, inlayTex, skyTex } from '../../lib/textures'
+import { bannerTex, exteriorTex, floorTex, inlayTex, skyTex } from '../../lib/textures'
 import { M, basic, box, enableShadows, mat, plane, mergeStatic } from './build'
 
 const LEN = L.entranceZ - L.endZ
@@ -13,18 +13,19 @@ function buildArchitecture() {
   const W = L.shopX + 0.6 // outer half-width
 
   // floor: large polished tiles + warm stone bands along the atrium edge
-  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), roughness: 0.22, metalness: 0.02 }), g)
+  const floor = plane(W * 2, LEN, new THREE.MeshStandardMaterial({ map: floorTex([(W * 2) / 2.4, LEN / 2.4]), color: '#B5A18A', roughness: 0.34, metalness: 0.02 }), g)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(0, 0, ZC)
   floor.userData.noCast = true
   ;[-1, 1].forEach((s) => {
-    const band = plane(0.7, LEN, new THREE.MeshStandardMaterial({ map: inlayTex([1, LEN / 0.7]), roughness: 0.3 }), g)
+    const band = plane(0.7, LEN, new THREE.MeshStandardMaterial({ map: inlayTex([1, LEN / 0.7]), color: '#8F7A62', roughness: 0.22 }), g)
     band.rotation.x = -Math.PI / 2
     band.position.set(s * (L.voidHalf + 0.15), 0.004, ZC)
     band.userData.noCast = true
   })
 
-  const stone = M.stone(), plaster = M.plaster(), alu = M.alu(), white = M.white(), oak = M.oak()
+  const stone = mat('#BBA78C', { roughness: 0.42 }), plaster = mat('#4A3B30', { roughness: 0.8 }), alu = M.alu(), white = mat('#D9CDBB', { roughness: 0.45 }), oak = mat('#A98452', { roughness: 0.5 })
+  const led = new THREE.MeshBasicMaterial({ color: '#FFDDA6', toneMapped: false })
 
   ;[-1, 1].forEach((s) => {
     // first-floor walkway slab, stone fascia with a pale oak reveal, downlights underneath
@@ -32,7 +33,10 @@ function buildArchitecture() {
     const slab = box(slabW, L.slabT, LEN, stone, s * (L.voidHalf + slabW / 2), L.upperY - L.slabT / 2, ZC, g)
     slab.userData.noReceive = false
     box(0.06, 0.12, LEN, oak, s * (L.voidHalf + 0.03), L.upperY - L.slabT + 0.12, ZC, g)
-    const dl = new THREE.MeshBasicMaterial({ color: '#FFF6E6' })
+    const dl = new THREE.MeshBasicMaterial({ color: '#FFE6BE', toneMapped: false })
+    // continuous warm light lines along each gallery, as in a premium mall
+    box(0.09, 0.02, LEN, led, s * (L.voidHalf + 0.5), L.upperY - L.slabT - 0.012, ZC, g).userData.noCast = true
+    box(0.09, 0.02, LEN, led, s * (L.voidHalf + 1.5), L.eaveY - 0.012, ZC, g).userData.noCast = true
     for (let z = L.entranceZ - 2; z > L.endZ; z -= 3) {
       const d = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), dl)
       d.rotation.x = Math.PI / 2
@@ -49,7 +53,7 @@ function buildArchitecture() {
     const wall = plane(LEN, L.eaveY - 8.4, plaster, g)
     wall.rotation.y = -s * Math.PI / 2
     wall.position.set(s * L.shopX, 8.4 + (L.eaveY - 8.4) / 2, ZC)
-    const ceil = plane(W - L.voidHalf, LEN, mat('#FAF8F3', { roughness: 1, side: THREE.DoubleSide }), g)
+    const ceil = plane(W - L.voidHalf, LEN, mat('#33291F', { roughness: 0.8, side: THREE.DoubleSide }), g)
     ceil.rotation.x = Math.PI / 2
     ceil.position.set(s * (L.voidHalf + (W - L.voidHalf) / 2), L.eaveY, ZC)
     ceil.userData.noCast = true
@@ -110,6 +114,11 @@ function buildArchitecture() {
     for (let x = -W; x <= W + 0.01; x += (W * 2) / 8) box(0.1, L.ridgeY, 0.14, alu, x, L.ridgeY / 2, z, g)
     for (const y of [3.2, 7.6, L.eaveY]) box(W * 2, 0.1, 0.14, alu, 0, y, z, g)
   })
+
+  // tall banner hanging in the atrium
+  const banner = plane(3.2, 5.12, basic(bannerTex(), { side: THREE.DoubleSide, fog: false }), g)
+  banner.position.set(0, 9.3, -19)
+  banner.userData.noCast = true
 
   enableShadows(g)
   mergeStatic(g)

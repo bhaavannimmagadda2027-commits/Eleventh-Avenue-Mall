@@ -24,5 +24,5 @@ export const color = {
 } as const
 
 export const font = {
-  family: 'Inter, "Segoe UI", system-ui, sans-serif',
+  family: 'Geist, "Segoe UI", system-ui, sans-serif',
 } as const

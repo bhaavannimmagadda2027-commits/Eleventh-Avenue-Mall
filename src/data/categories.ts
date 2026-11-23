@@ -1,11 +1,11 @@
-import type { LucideIcon } from 'lucide-react'
-import { Apple, Sparkles, Headphones, Shirt, Baby, Sofa, Gem, Coffee, Pill, Watch } from 'lucide-react'
+import type { AppIcon } from '../components/ui/icons'
+import { Apple, Sparkles, Headphones, Shirt, Baby, Sofa, Gem, Coffee, Pill, Watch } from '../components/ui/icons'
 
 export type CategoryId =
   | 'grocery' | 'beauty' | 'electronics' | 'fashion' | 'kids'
   | 'home' | 'jewellery' | 'dining' | 'health' | 'watches'
 
-export type Category = { id: CategoryId; label: string; icon: LucideIcon; glyph: string }
+export type Category = { id: CategoryId; label: string; icon: AppIcon; glyph: string }
 
 // glyph = simple mark drawn on the physical directory sign (canvas)
 export const CATEGORIES: Category[] = [

@@ -5,7 +5,7 @@ import { blobTex, canvasTex, rng } from '../../lib/textures'
 import { M, box, enableShadows, mat, plane, mergeStatic } from './build'
 
 /** Leaf cluster card: many small leaves on a transparent canvas. Reads as foliage at a distance. */
-const leafTex = () =>
+export const leafTex = () =>
   canvasTex('leaves', 256, 256, (g, w, h) => {
     g.clearRect(0, 0, w, h)
     const R = rng(17)

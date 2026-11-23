@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Minus, Plus, X } from 'lucide-react'
+import { Minus, Plus, X } from '../ui/icons'
 import { PRODUCT_BY_ID, alternatives, type Product } from '../../data/products'
 import { PLACE } from '../../data/storeLayout'
 import { thumb } from '../../lib/productArt'
@@ -21,23 +21,23 @@ export function QtyControl({ p, from = null, size = 'md' }: { p: Product; from?:
   const h = size === 'lg' ? 'h-12' : 'h-10'
   if (!q)
     return (
-      <button onClick={() => add(p.id, 1, shelfPoint(p, from))} className={cx(h, 'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-ink px-5 text-[14px] font-semibold text-white active:scale-[0.98]')}>
-        <Plus size={17} strokeWidth={2} /> Add to cart
+      <button onClick={() => add(p.id, 1, shelfPoint(p, from))} className={cx(h, 'inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-on-ink active:scale-[0.98]')}>
+        <Plus size={17} /> Add to cart
       </button>
     )
   return (
-    <div className={cx(h, 'inline-flex flex-1 items-center justify-between rounded-full bg-ink px-1.5 text-white')}>
-      <button aria-label="Remove one" onClick={() => setQty(p.id, q - 1)} className="grid h-8 w-8 place-items-center rounded-full active:bg-white/10"><Minus size={16} strokeWidth={2} /></button>
-      <span className="text-[15px] font-semibold tnum">{q} in cart</span>
-      <button aria-label="Add one" onClick={() => add(p.id, 1, shelfPoint(p, from))} className="grid h-8 w-8 place-items-center rounded-full active:bg-white/10"><Plus size={16} strokeWidth={2} /></button>
+    <div className={cx(h, 'inline-flex flex-1 items-center justify-between rounded-full bg-ink px-2 text-on-ink')}>
+      <button aria-label="Remove one" onClick={() => setQty(p.id, q - 1)} className="grid h-8 w-8 place-items-center rounded-full active:bg-on-ink/15"><Minus size={16} /></button>
+      <span className="text-sm font-semibold tnum">{q} in cart</span>
+      <button aria-label="Add one" onClick={() => add(p.id, 1, shelfPoint(p, from))} className="grid h-8 w-8 place-items-center rounded-full active:bg-on-ink/15"><Plus size={16} /></button>
     </div>
   )
 }
 
 export function Price({ p, big }: { p: Product; big?: boolean }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5">
-      <span className={cx('font-semibold tnum', big ? 'text-[20px]' : 'text-price')}>{inr(p.price)}</span>
+    <span className="inline-flex items-baseline gap-2">
+      <span className={cx('font-semibold tnum', big ? 'text-xl' : 'text-price')}>{inr(p.price)}</span>
       {p.mrp && <span className="text-support text-ink-3 line-through tnum">{inr(p.mrp)}</span>}
     </span>
   )
@@ -63,32 +63,32 @@ export function ProductPreview() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-            className="glass pointer-events-auto rounded-[24px] p-3"
+            className="glass pointer-events-auto rounded-3xl p-3"
           >
             <div className="flex gap-3">
-              <button onClick={() => open({ kind: 'product', id: p.id })} className="grid h-[84px] w-[84px] shrink-0 place-items-center rounded-[18px] bg-cream" aria-label={`Details for ${p.name}`}>
+              <button onClick={() => open({ kind: 'product', id: p.id })} className="grid h-[84px] w-[84px] shrink-0 place-items-center rounded-2xl bg-cream" aria-label={`Details for ${p.name}`}>
                 {thumb(p.id) && <img src={thumb(p.id) || undefined} alt="" className="h-[78px] w-[78px]" />}
               </button>
-              <div className="min-w-0 flex-1 pr-7 leading-tight">
+              <div className="min-w-0 flex-1 pr-6 leading-tight">
                 <div className="text-micro font-semibold uppercase tracking-[0.06em] text-ink-2">{p.brand}</div>
                 <div className="mt-0.5 truncate text-product font-semibold">{p.name}</div>
                 <div className="mt-0.5 text-support text-ink-2">{p.size}</div>
                 <div className="mt-1 flex items-center gap-2"><Price p={p} />{p.offer && <Badge tone="promo">{p.offer}</Badge>}</div>
               </div>
-              <button onClick={() => showPreview(null)} aria-label="Close" className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-cream text-ink-2"><X size={15} strokeWidth={2} /></button>
+              <button onClick={() => showPreview(null)} aria-label="Close" className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-cream text-ink-2"><X size={15} /></button>
             </div>
             <p className="mt-2 line-clamp-1 text-support text-ink-2">{p.desc}</p>
-            <div className="mt-2.5 flex gap-2">
+            <div className="mt-2 flex gap-2">
               <QtyControl p={p} from={preview?.from ?? null} />
-              <button onClick={() => open({ kind: 'product', id: p.id })} className="h-10 rounded-full bg-cream px-4 text-[14px] font-semibold">Details</button>
+              <button onClick={() => open({ kind: 'product', id: p.id })} className="h-10 rounded-full bg-cream px-4 text-sm font-semibold">Details</button>
             </div>
             {alts.length > 0 && (
               <div className="mt-3">
-                <div className="mb-1.5 text-micro font-semibold uppercase tracking-[0.06em] text-ink-2">Alternatives</div>
+                <div className="mb-2 text-micro font-semibold uppercase tracking-[0.06em] text-ink-2">Alternatives</div>
                 <div className="no-scrollbar -mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3">
                   {alts.map((a) => (
-                    <button key={a.id} onClick={() => showPreview(a.id, null)} className="flex w-[118px] shrink-0 snap-start items-center gap-2 rounded-[14px] bg-white/80 p-1.5 text-left">
-                      {thumb(a.id) && <img src={thumb(a.id) || undefined} alt="" className="h-9 w-9 shrink-0 rounded-[10px] bg-cream" />}
+                    <button key={a.id} onClick={() => showPreview(a.id, null)} className="flex w-[118px] shrink-0 snap-start items-center gap-2 rounded-xl bg-surface/80 p-2 text-left">
+                      {thumb(a.id) && <img src={thumb(a.id) || undefined} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-cream" />}
                       <span className="min-w-0 leading-tight">
                         <span className="block truncate text-micro font-semibold">{a.name.split(',')[0]}</span>
                         <span className="text-micro text-ink-2 tnum">{inr(a.price)}</span>

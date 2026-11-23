@@ -24,6 +24,9 @@ export type Panel =
   | { kind: 'product'; id: string }
   | { kind: 'friends' }
   | { kind: 'friend'; id: string }
+  | { kind: 'assistant'; listen?: boolean }
+  | { kind: 'notifications' }
+  | { kind: 'offers' }
 
 /** `by`: who added it ('you' or a friend id); only used in the family cart */
 export type CartLine = { productId: string; qty: number; price: number; storeId: string; by?: string }
@@ -49,6 +52,10 @@ export type Vec3 = [number, number, number]
 
 type MallState = {
   view: View
+  /** landing page has scrolled past the hero, so the 3D mall need not render */
+  sceneFrozen: boolean
+  /** how many wallet activity entries the shopper has already seen */
+  alertsSeen: number
   mallId: string
   location: Location
   /** short cream fade while moving between the lobby and a store */
@@ -136,6 +143,8 @@ type MallState = {
 
 export const useMall = create<MallState>((set, get) => ({
   view: 'landing',
+  sceneFrozen: false,
+  alertsSeen: SEED_ACTIVITY.length,
   mallId: 'tata',
   location: 'lobby',
   fading: false,
@@ -225,7 +234,7 @@ export const useMall = create<MallState>((set, get) => ({
     const s = get()
     const lines = activeCart(s)
     if (!lines.length || s.checkout !== 'review') return
-    const bill = computeBill(lines, { useCoins: s.useCoins, balance: s.coins })
+    const bill = computeBill(lines, { useCoins: s.useCoins, balance: s.coins, yearEarned: s.yearEarned })
     const family = s.cartMode === 'family'
     const order: Order = {
       id: 'TM' + String(Math.floor(100000 + Math.random() * 900000)),
@@ -337,7 +346,7 @@ export const useMall = create<MallState>((set, get) => ({
   },
   add: (productId, qty = 1, from = null) => {
     const p = PRODUCT_BY_ID[productId]
-    const before = computeBill(activeCart(get()), { useCoins: false, balance: 0 }).coinsEarned
+    const before = computeBill(activeCart(get()), { useCoins: false, balance: 0, yearEarned: get().yearEarned }).coinsEarned
     set((s) => {
       const fam = s.cartMode === 'family'
       const list = fam ? s.familyCart : s.cart
@@ -350,7 +359,7 @@ export const useMall = create<MallState>((set, get) => ({
         lastAdd: { productId, nonce: (s.lastAdd?.nonce ?? 0) + 1 },
       }
     })
-    const gained = computeBill(activeCart(get()), { useCoins: false, balance: 0 }).coinsEarned - before
+    const gained = computeBill(activeCart(get()), { useCoins: false, balance: 0, yearEarned: get().yearEarned }).coinsEarned - before
     if (gained > 0) set((s) => ({ coinBurst: { amount: gained, nonce: (s.coinBurst?.nonce ?? 0) + 1 } }))
   },
   setQty: (productId, qty) => {
@@ -376,6 +385,6 @@ export const activeCart = (s: { cartMode: CartMode; cart: CartLine[]; familyCart
 export const cartCount = (c: CartLine[]) => c.reduce((a, l) => a + l.qty, 0)
 export const cartTotal = (c: CartLine[]) => c.reduce((a, l) => a + l.qty * l.price, 0)
 /** What the shopper will actually pay (offers, fees and NeuCoins applied), same as the cart sheet. */
-export const toPay = (s: { cartMode: CartMode; cart: CartLine[]; familyCart: CartLine[]; useCoins: boolean; coins: number }) => computeBill(activeCart(s), { useCoins: s.useCoins, balance: s.coins }).total
+export const toPay = (s: { cartMode: CartMode; cart: CartLine[]; familyCart: CartLine[]; useCoins: boolean; coins: number; yearEarned: number }) => computeBill(activeCart(s), { useCoins: s.useCoins, balance: s.coins, yearEarned: s.yearEarned }).total
 export const qtyOf = (c: CartLine[], id: string) => c.find((l) => l.productId === id)?.qty ?? 0
 export const inr = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')

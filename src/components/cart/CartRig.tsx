@@ -13,6 +13,7 @@ import { buildNeuCart } from './NeuCart'
 const CAM_H = 2.2 // eye height behind the cart
 const CART_AHEAD = 2.3 // cart distance in front of the camera
 const PITCH = -0.26
+const ATRIUM_PITCH = -0.17 // look up a little in the tall hall, so the galleries and roof stay in frame
 const LANE = 4.6 // clear walking lanes either side of the atrium axis
 const CROSS_Z = [2, -11.6, -21, -40.5, -53, -63] // where the atrium axis is free to cross
 
@@ -157,10 +158,12 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
     if (!pl || s.location !== PRODUCT_BY_ID[pl.productId].storeId) return
     const side = pl.side
     const hall = HALLS[pl.storeId]
-    const target = { x: hall.ox - side * 0.4, z: Math.min(hall.entranceZ - 1.2, pl.z + 2.0) }
+    const lane = hall.atrium ? side * 1.5 : -side * 0.4
+    const target = { x: hall.ox + lane, z: Math.min(hall.entranceZ - 1.2, pl.z + 2.0) }
     const id = pl.productId, then = s.seek.then
     auto.current = {
-      pts: [target], i: 0, yawEnd: yawTo(side * 0.82, -0.57), v: Math.max(0, mv.current.v),
+      // in the wide hall, ease into the side lane while rolling forward so the cart clears the islands
+      pts: hall.atrium && Math.abs(mv.current.x - target.x) > 0.3 && mv.current.z - target.z > 4 ? [{ x: target.x, z: mv.current.z - 3 }, target] : [target], i: 0, yawEnd: yawTo(side * 0.82, -0.57), v: Math.max(0, mv.current.v),
       then: then === 'preview' ? () => useMall.getState().showPreview(id, [pl.x, 1.1, pl.z]) : undefined,
     }
   }), [])
@@ -175,7 +178,7 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
     const st = useMall.getState()
     const view = st.view
     if (view !== lastView.current) {
-      if (view === 'mall') enter.current = { t: reduceMotion ? 1 : 0, from: camera.position.clone(), fromYaw: camera.rotation.y, fromPitch: camera.rotation.x }
+      if (view === 'mall') enter.current = { t: reduceMotion || st.location !== 'lobby' ? 1 : 0, from: camera.position.clone(), fromYaw: camera.rotation.y, fromPitch: camera.rotation.x }
       else { auto.current = null; Object.assign(m, { x: L.spawn.x, z: L.spawn.z, yaw: L.spawn.yaw, v: 0, turn: 0 }) }
       lastView.current = view
     }
@@ -251,7 +254,8 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
     }
 
     const follow = new THREE.Vector3(m.x, CAM_H, m.z)
-    let pos = follow, yaw = m.yaw, pitch = PITCH
+    const restPitch = HALLS[st.location]?.atrium ? ATRIUM_PITCH : PITCH
+    let pos = follow, yaw = m.yaw, pitch = restPitch
     if (view === 'landing') {
       const t = state.clock.elapsedTime
       pos = new THREE.Vector3(Math.sin(t * 0.07) * 0.6, 3.9, 6.6)
@@ -263,7 +267,7 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
       const k = ease(e.t)
       pos = e.from.clone().lerp(follow, k)
       yaw = lerp(e.fromYaw, m.yaw, k)
-      pitch = lerp(e.fromPitch, PITCH, k)
+      pitch = lerp(e.fromPitch, restPitch, k)
     }
     camera.position.copy(pos)
     camera.rotation.order = 'YXZ'
