@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { PRODUCTS, isProduce, type Art, type Product } from '../data/products'
 import { canvasTex, rng, rr } from './textures'
 import { font } from '../styles/tokens'
@@ -183,83 +183,178 @@ const clean = (g: THREE.BufferGeometry) => {
 }
 const merge = (gs: THREE.BufferGeometry[]) => mergeGeometries(gs.map(clean), false)!
 
+/* Produce is modelled with smooth welded surfaces and painted per vertex, so it reads as food rather than primitives. */
+const weld = (g: THREE.BufferGeometry) => {
+  g.deleteAttribute('normal'); g.deleteAttribute('uv')
+  const w = mergeVertices(g, 1e-4)
+  w.computeVertexNormals()
+  return w
+}
+function reshape(g: THREE.BufferGeometry, f: (v: THREE.Vector3) => void) {
+  const pos = g.attributes.position, v = new THREE.Vector3()
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); f(v); pos.setXYZ(i, v.x, v.y, v.z) }
+  g.computeVertexNormals()
+  return g
+}
+function tone(g: THREE.BufferGeometry, f: (v: THREE.Vector3, c: THREE.Color) => void) {
+  const pos = g.attributes.position, arr = new Float32Array(pos.count * 3), v = new THREE.Vector3(), c = new THREE.Color()
+  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i); f(v, c); arr.set([c.r, c.g, c.b], i * 3) }
+  g.setAttribute('color', new THREE.BufferAttribute(arr, 3))
+  return g
+}
+const speck = (x: number, y: number, z: number) => Math.sin(x * 211 + y * 97) * Math.cos(z * 173 - y * 131)
+const mix = (c: THREE.Color, a: string, b: string, t: number) => c.set(a).lerp(new THREE.Color(b), Math.max(0, Math.min(1, t)))
+const onFloor = (g: THREE.BufferGeometry) => { g.computeBoundingBox(); return g.translate(0, -g.boundingBox!.min.y, 0) }
+
+/** A soft leaf: an ellipse with a raised midrib, arched along its length. */
+function leafGeo(len: number, wide: number, arch: number, inner: string, outer: string, seg = 4) {
+  const g = new THREE.PlaneGeometry(len, wide, seg, seg > 2 ? 2 : 1).rotateX(-Math.PI / 2).translate(len / 2, 0, 0)
+  reshape(g, (v) => {
+    const t = v.x / len, w = Math.pow(Math.sin(Math.PI * Math.min(1, t * 0.96 + 0.04)), 0.7)
+    const side = v.z / (wide / 2)
+    v.z *= w
+    v.y = Math.sin(t * Math.PI * 0.8) * arch - Math.abs(side) * w * wide * 0.12 + Math.sin(t * 14 + side * 3) * wide * 0.035
+  })
+  return tone(g, (v, c) => mix(c, inner, outer, Math.abs(v.z) / (wide * 0.42) * 0.7 + (v.x / len) * 0.3))
+}
+
 /** One produce item (or bunch) with baked vertex colours, origin at its resting base. */
 function produceGeo(p: Product): THREE.BufferGeometry {
   const r = p.dims[0]
   const R = rng(p.id.length * 13)
-  const main = p.colors[0]
+  const [main, second = main, third = second] = p.colors
   switch (p.shape) {
     case 'round': {
-      const g = new THREE.SphereGeometry(r, 11, 7)
-      if (p.id === 'onion') g.scale(1, 1.05, 1)
-      if (p.id === 'potato') g.scale(1.25, 0.82, 0.95)
-      if (p.id === 'apple' || p.id === 'pomegranate') g.scale(1, 0.92, 1)
-      const top = p.id === 'tomato' ? '#3D6B2A' : p.id === 'apple' ? '#5A3A22' : p.id === 'pomegranate' ? '#6E1A22' : p.id === 'onion' ? '#C9A27A' : main
-      paint(g, (y) => (y > r * 0.86 ? top : main))
-      g.translate(0, r * 0.9, 0)
-      return g
+      const g = weld(new THREE.SphereGeometry(r, 12, 9))
+      const extra: THREE.BufferGeometry[] = []
+      const id = p.id
+      reshape(g, (v) => {
+        const u = v.y / r, a = Math.atan2(v.z, v.x)
+        if (id === 'tomato') {
+          const k = 1 + 0.045 * Math.cos(a * 5) * Math.max(0, u + 0.2)
+          v.x *= k * 1.06; v.z *= k * 1.06; v.y *= 0.82
+          if (u > 0.68) v.y -= (u - 0.68) * r * 0.55
+        } else if (id === 'apple') {
+          const k = 1 + 0.09 * Math.sin(Math.PI * Math.max(0, (u + 0.2) / 1.2)) - 0.13 * Math.max(0, -u)
+          v.x *= k; v.z *= k; v.y *= 0.92
+          if (u > 0.72) v.y -= (u - 0.72) * r * 0.95
+          if (u < -0.82) v.y += (-u - 0.82) * r * 0.7
+        } else if (id === 'onion') {
+          const n = Math.max(0, u - 0.42)
+          v.x *= 1.04 - n * 1.5; v.z *= 1.04 - n * 1.5; v.y = v.y * 0.86 + n * n * r * 1.5
+        } else if (id === 'potato') {
+          const k = 1 + 0.07 * Math.sin(v.x * 42 + 1) * Math.cos(v.z * 37) + 0.05 * Math.sin(v.y * 51 + 2)
+          v.x *= k * 1.28; v.y *= k * 0.8; v.z *= k * 0.96
+        } else if (id === 'pomegranate') {
+          const k = 1 + 0.035 * Math.cos(a * 6)
+          v.x *= k; v.z *= k; v.y *= 0.94
+        } else {
+          v.y *= 0.95
+          if (u > 0.86) v.y -= (u - 0.86) * r * 0.5
+        }
+      })
+      tone(g, (v, c) => {
+        const u = v.y / r, a = Math.atan2(v.z, v.x), n = speck(v.x, v.y, v.z)
+        if (id === 'apple') { mix(c, main, '#E7B64C', Math.max(0, Math.sin(a * 3 + u * 2) * 0.32) + Math.max(0, -u - 0.2) * 0.75); if (u > 0.62) c.lerp(new THREE.Color('#B7A04A'), (u - 0.62) * 0.8) }
+        else if (id === 'onion') { mix(c, main, '#D8A5B0', Math.pow(Math.abs(Math.sin(a * 9)), 5) * 0.55 + Math.max(0, u - 0.45) * 0.9) }
+        else if (id === 'potato') { mix(c, main, '#8E6C42', n > 0.72 ? 0.8 : Math.abs(n) * 0.16) }
+        else if (id === 'pomegranate') { mix(c, main, '#D86A58', Math.max(0, Math.sin(a * 2 + u * 3)) * 0.5) }
+        else if (id === 'tomato') { mix(c, main, '#F0A030', Math.max(0, u - 0.45) * 0.8) }
+        else if (id === 'orange') { mix(c, main, second, n * 0.5 + 0.3); if (u > 0.78) c.lerp(new THREE.Color('#C9A23A'), 0.45) }
+        else c.set(main)
+      })
+      g.computeBoundingBox()
+      const y = g.boundingBox!.max.y
+      if (id === 'tomato') {
+        for (let i = 0; i < 5; i++) extra.push(leafGeo(r * 0.5, r * 0.2, r * 0.05, '#3F7A2C', '#2F6424', 2).rotateY((i / 5) * Math.PI * 2).translate(0, y - r * 0.12, 0))
+        extra.push(paint(new THREE.CylinderGeometry(r * 0.05, r * 0.08, r * 0.2, 5).translate(0, y, 0), '#4F7F35'))
+      } else if (id === 'apple') extra.push(paint(new THREE.CylinderGeometry(r * 0.035, r * 0.05, r * 0.42, 5).rotateZ(0.25).translate(r * 0.03, y - r * 0.04, 0), '#5A3F26'))
+      else if (id === 'onion') extra.push(paint(new THREE.ConeGeometry(r * 0.13, r * 0.34, 6).translate(0, y + r * 0.1, 0), '#C9A27A'))
+      else if (id === 'pomegranate') {
+        for (let i = 0; i < 6; i++) { const t = (i / 6) * Math.PI * 2; extra.push(paint(new THREE.ConeGeometry(r * 0.09, r * 0.3, 4).rotateZ(-0.4).rotateY(t).translate(Math.cos(t) * r * 0.1, y + r * 0.08, -Math.sin(t) * r * 0.1), '#7D1A28')) }
+      } else if (id === 'orange') extra.push(paint(new THREE.CylinderGeometry(r * 0.06, r * 0.08, r * 0.05, 6).translate(0, y - r * 0.03, 0), '#5E7A32'))
+      return onFloor(merge([g, ...extra]))
     }
     case 'capsicum': {
-      const g = new THREE.SphereGeometry(r, 12, 8)
-      const pos = g.attributes.position
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i)
-        const a = Math.atan2(z, x), k = 1 + 0.08 * Math.cos(a * 4)
-        pos.setXYZ(i, x * k, y * 1.05, z * k)
-      }
-      g.computeVertexNormals()
-      paint(g, main)
-      const stem = paint(new THREE.CylinderGeometry(0.008, 0.012, 0.03, 6).translate(0, r * 1.05, 0), '#4E7A2E')
-      return merge([g, stem]).translate(0, r, 0)
+      const g = weld(new THREE.SphereGeometry(r, 14, 8))
+      reshape(g, (v) => {
+        const u = v.y / r, a = Math.atan2(v.z, v.x)
+        const lobe = 1 + 0.13 * Math.pow(Math.abs(Math.cos(a * 2)), 0.7) - 0.05
+        const taper = u < 0 ? 1 + u * 0.24 : 1 + (1 - u) * 0.04
+        v.x *= lobe * taper; v.z *= lobe * taper; v.y *= 1.12
+        if (u > 0.74) v.y -= (u - 0.74) * r * 1.0
+        if (u < -0.84) v.y += (-u - 0.84) * r * 0.8
+      })
+      tone(g, (v, c) => { const a = Math.atan2(v.z, v.x); mix(c, main, '#1F5C1F', Math.pow(1 - Math.abs(Math.cos(a * 2)), 3) * 0.75); if (v.y > r * 0.72) c.lerp(new THREE.Color('#6FAF45'), 0.35) })
+      g.computeBoundingBox()
+      const stem = paint(new THREE.CylinderGeometry(r * 0.09, r * 0.16, r * 0.42, 6).rotateZ(0.14).translate(0, g.boundingBox!.max.y - r * 0.02, 0), '#587F36')
+      return onFloor(merge([g, stem]))
     }
     case 'leafy': {
-      const g = new THREE.IcosahedronGeometry(r, 3)
-      const pos = g.attributes.position
-      for (let i = 0; i < pos.count; i++) {
-        const v = new THREE.Vector3().fromBufferAttribute(pos, i)
-        v.multiplyScalar(1 + Math.sin(v.x * 90) * Math.cos(v.z * 80) * 0.06)
-        pos.setXYZ(i, v.x, v.y * 0.9, v.z)
+      const core = weld(new THREE.SphereGeometry(r * 0.86, 10, 7))
+      reshape(core, (v) => { v.y *= 0.92; v.multiplyScalar(1 + Math.sin(v.x * 44) * Math.cos(v.z * 39) * 0.035) })
+      tone(core, (v, c) => mix(c, '#DDEBAE', second, 0.35 + speck(v.x, v.y, v.z) * 0.18))
+      const shells: THREE.BufferGeometry[] = [core]
+      for (let i = 0; i < 5; i++) {
+        const shell = weld(new THREE.SphereGeometry(r * (0.94 + i * 0.012), 8, 5, 0, 2.5, 0.42 + R() * 0.3, 2.1))
+        reshape(shell, (v) => { v.multiplyScalar(1 + Math.sin(v.x * 62 + i) * Math.cos(v.y * 47) * 0.05); v.y *= 0.92 })
+        tone(shell, (v, c) => mix(c, main, '#CFE39A', (v.y / r + 1) * 0.42 + speck(v.x, v.y, v.z) * 0.08))
+        shell.rotateY((i / 5) * Math.PI * 2 + R() * 0.5)
+        shells.push(shell)
       }
-      g.computeVertexNormals()
-      paint(g, (y) => (y > r * 0.3 ? '#A9CF78' : main))
-      return g.translate(0, r * 0.85, 0)
+      return onFloor(merge(shells))
     }
     case 'spinach': {
       const leaves: THREE.BufferGeometry[] = []
       for (let i = 0; i < 7; i++) {
-        const l = new THREE.SphereGeometry(r * 0.5, 7, 4).scale(1, 0.12, 0.55)
-        l.translate(r * 0.45, 0, 0)
-        l.rotateZ(0.25 + R() * 0.3)
-        l.rotateY((i / 7) * 0.9 - 0.45)
-        paint(l, p.colors[i % p.colors.length])
+        const l = leafGeo(r * (1.25 + R() * 0.35), r * (0.72 + R() * 0.2), r * 0.22, third, p.colors[i % p.colors.length])
+        l.rotateZ(0.42 + (i % 3) * 0.22).rotateY((i / 6 - 0.5) * 1.15).translate(r * 0.42, r * 0.08, 0)
         leaves.push(l)
+        leaves.push(paint(new THREE.CylinderGeometry(r * 0.025, r * 0.035, r * 0.82, 4).rotateZ(Math.PI / 2).rotateY((i / 6 - 0.5) * 0.45).translate(0, r * 0.08, 0), '#83AD5D'))
       }
-      const stem = paint(new THREE.CylinderGeometry(0.012, 0.012, r * 0.6, 6).rotateZ(Math.PI / 2).translate(-r * 0.25, 0, 0), '#6E9A4E')
-      return merge([...leaves, stem]).translate(0, r * 0.2, 0)
+      leaves.push(paint(new THREE.TorusGeometry(r * 0.13, r * 0.03, 4, 8).rotateY(Math.PI / 2).translate(-r * 0.05, r * 0.08, 0), '#C9443C'))
+      return onFloor(merge(leaves).translate(-r * 0.45, 0, 0))
     }
     case 'carrot': {
-      const body = paint(new THREE.ConeGeometry(r, r * 6.5, 12).rotateZ(Math.PI / 2), (_y, x) => (x > r * 2.9 ? '#D9661E' : main))
+      const body = weld(new THREE.ConeGeometry(r, r * 6.5, 9, 7).rotateZ(Math.PI / 2))
+      reshape(body, (v) => { const t = (v.x + r * 3.25) / (r * 6.5), k = 1 + Math.sin(t * 34) * 0.035; const shoulder = t > 0.9 ? Math.sqrt(Math.max(0.05, 1 - Math.pow((t - 0.9) / 0.1, 2) * 0.72)) : 1; v.y *= k * shoulder; v.z *= k * shoulder })
+      tone(body, (v, c) => { const t = (v.x + r * 3.25) / (r * 6.5); mix(c, main, '#BF5317', Math.pow(Math.abs(Math.sin(t * 34)), 7) * 0.5 + (t > 0.9 ? 0.25 : 0)) })
       const tops: THREE.BufferGeometry[] = []
-      for (let i = 0; i < 3; i++) tops.push(paint(new THREE.ConeGeometry(r * 0.25, r * 2.6, 5).rotateZ(-Math.PI / 2 + (i - 1) * 0.3).translate(r * 4.3, (i - 1) * r * 0.3, 0), '#4F8A3A'))
-      return merge([body, ...tops]).translate(0, r, 0)
+      for (let i = 0; i < 4; i++) tops.push(leafGeo(r * 3, r * 0.5, r * 0.45, '#4F8A3A', '#2F7132').rotateZ((i - 1.5) * 0.18).rotateY((i - 1.5) * 0.22).translate(r * 3.1, 0, 0))
+      return onFloor(merge([body, ...tops]))
     }
     case 'broccoli': {
-      const parts: THREE.BufferGeometry[] = [paint(new THREE.CylinderGeometry(r * 0.22, r * 0.3, r * 0.9, 8).translate(0, r * 0.45, 0), '#7FA35A')]
-      for (let i = 0; i < 7; i++) {
-        const a = R() * Math.PI * 2, d = R() * r * 0.55
-        parts.push(paint(new THREE.IcosahedronGeometry(r * (0.38 + R() * 0.12), 1).translate(Math.cos(a) * d, r * 0.95 + R() * r * 0.25, Math.sin(a) * d), p.colors[i % 2]))
-      }
-      return merge(parts)
+      const crown = weld(new THREE.SphereGeometry(r, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.62))
+      const buds = Array.from({ length: 13 }, () => {
+        const t = R() * Math.PI * 2, y = 0.2 + R() * 0.8, q = Math.sqrt(1 - y * y)
+        return new THREE.Vector3(Math.cos(t) * q, y, Math.sin(t) * q)
+      })
+      const budAt = (v: THREE.Vector3) => { const d = v.clone().normalize(); return buds.reduce((m, b) => Math.max(m, d.dot(b)), -1) }
+      reshape(crown, (v) => { const b = budAt(v); v.multiplyScalar(0.78 + Math.pow(Math.max(0, b), 18) * 0.24 + Math.sin(v.x * 240) * Math.cos(v.z * 230) * 0.012); v.y *= 0.86 })
+      tone(crown, (v, c) => { const b = Math.pow(Math.max(0, budAt(v)), 18); mix(c, '#264F24', second, b * 0.95 + speck(v.x, v.y, v.z) * 0.08) })
+      crown.translate(0, r * 0.58, 0)
+      const stalk = paint(new THREE.CylinderGeometry(r * 0.42, r * 0.25, r * 0.74, 8).translate(0, r * 0.36, 0), '#9DBD73')
+      return onFloor(merge([stalk, crown]))
     }
     case 'banana': {
       const parts: THREE.BufferGeometry[] = []
       for (let i = 0; i < 5; i++) {
-        const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.03, 0), new THREE.Vector3(0.1, 0.0, (i - 2) * 0.018), new THREE.Vector3(0.18, 0.06, (i - 2) * 0.03))
-        const t = new THREE.TubeGeometry(curve, 6, 0.017, 5, false)
-        paint(t, (_y, x) => (x > 0.165 || x < 0.012 ? '#6E5A2A' : p.colors[i % 2]))
+        const o = (i - 2) * 0.031
+        const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.005, 0.07, o * 0.28), new THREE.Vector3(0.09, -0.012, o * 0.86), new THREE.Vector3(0.21, 0.064, o * 1.25))
+        const seg = 6, rad = 5
+        const t = new THREE.TubeGeometry(curve, seg, 0.024, rad, false)
+        const pos = t.attributes.position, c = new THREE.Vector3(), v = new THREE.Vector3()
+        for (let n = 0; n <= seg; n++) {
+          curve.getPointAt(n / seg, c)
+          const u = n / seg, k = Math.min(0.42 + u * 4.2, 1) * (u > 0.82 ? Math.max(0.28, 1 - (u - 0.82) * 4) : 1)
+          for (let m = 0; m <= rad; m++) { const idx = n * (rad + 1) + m; v.fromBufferAttribute(pos, idx).sub(c).multiplyScalar(k).add(c); pos.setXYZ(idx, v.x, v.y, v.z) }
+        }
+        t.computeVertexNormals()
+        tone(t, (w, col) => { const u = w.x / 0.21; mix(col, p.colors[i % 2], '#C9AE3A', Math.pow(Math.abs(Math.sin(Math.atan2(w.y - 0.03, w.z - o) * 2.5)), 8) * 0.16); if (u < 0.1) col.lerp(new THREE.Color('#C3C25A'), 0.6); if (u > 0.97) col.set('#6A5430') })
         parts.push(t)
       }
-      return merge(parts).translate(-0.09, 0.0, 0)
+      parts.push(paint(new THREE.CylinderGeometry(0.014, 0.02, 0.07, 5).rotateX(Math.PI / 2).translate(-0.006, 0.07, 0), '#B4AE52'))
+      return onFloor(merge(parts).translate(-0.1, 0, 0))
     }
   }
   return new THREE.SphereGeometry(r)
@@ -319,7 +414,7 @@ function compact(geo: THREE.BufferGeometry, faceMats: THREE.Material[]): Part {
   return { geo, mat: mats }
 }
 const partCache = new Map<string, Part[]>()
-const produceMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55 })
+const produceMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.44, side: THREE.DoubleSide })
 
 /** Meshes that make up one unit of a product, origin at the bottom centre, front facing +z. */
 export function productParts(p: Product): Part[] {

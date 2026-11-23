@@ -20,7 +20,7 @@ const F = (w: number, px: number) => `${w} ${px}px ${font.family}`
 const tagMats = new Map<string, THREE.MeshBasicMaterial>()
 const tagMat = (p: Product) => tagMats.get(p.id) ?? tagMats.set(p.id, new THREE.MeshBasicMaterial({ map: tagTex(p) })).get(p.id)!
 const STOCK_BLOCK = 6 // metres of hall per instanced block
-const MIRROR_STOCK_RANGE = 11 // metres
+const MIRROR_STOCK_RANGE = 7.5 // metres
 const REC = new THREE.MeshBasicMaterial({ color: '#E5484D', toneMapped: false })
 const LED = new THREE.MeshBasicMaterial({ color: '#FFF6E2', toneMapped: false })
 
@@ -240,62 +240,101 @@ function bakeryBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   })
 }
 
-/** Produce: three tiers of wooden crates on a stepped stand, each heaped into a low mound. */
-function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera: boolean) {
-  const W = run.bay, D = c.hall.depth, R = c.R
-  const wood = mat('#B08F5E', { roughness: 0.85 }), dark = mat('#94754A', { roughness: 0.85 })
-  const stand = mat('#6E5537', { roughness: 0.8 })
-  box(W - 0.04, 0.48, 0.36, stand, 0, 0.24, 0.26, bay)
-  box(W - 0.04, 0.78, 0.3, stand, 0, 0.39, -0.04, bay)
-  box(W - 0.04, 1.08, 0.3, stand, 0, 0.54, -0.3, bay)
-  const wallH = c.hall.atrium ? 2.62 : 1.9
-  box(W, wallH, 0.04, GONDOLA_BACK(), 0, wallH / 2, -D / 2 + 0.02, bay)
-  if (c.hall.atrium) {
-    // two shelves of the same produce above the crates, so the wall reads full to the sign
-    ;[1.62, 2.12].forEach((y) => {
-      box(W - 0.02, 0.03, 0.34, wood, 0, y - 0.015, -D / 2 + 0.2, bay)
-      box(W - 0.02, 0.09, 0.02, dark, 0, y + 0.02, -D / 2 + 0.37, bay)
-      // one front row is all the eye gets at this height, and produce meshes are heavy
-      const s = fitScale(p, 0.36, 1.05)
-      fillShelf(c.insts, p, W - 0.06, y, [-D / 2 + 0.28], 1, c.frame, c.R, s, 0.004)
-    })
-  }
-  ;[[0.52, 0.27], [0.82, -0.02], [1.12, -0.29]].forEach(([y, z]) => {
-    const crate = new THREE.Group()
-    crate.position.set(0, y, z)
-    crate.rotation.x = 0.26
-    bay.add(crate)
-    const cw = W - 0.08, cd = 0.4
-    box(cw, 0.03, cd, wood, 0, 0, 0, crate)
-    box(cw, 0.14, 0.025, dark, 0, 0.06, cd / 2, crate)
-    box(cw, 0.14, 0.025, dark, 0, 0.06, -cd / 2, crate)
-    box(0.025, 0.14, cd, dark, -cw / 2, 0.06, 0, crate)
-    box(0.025, 0.14, cd, dark, cw / 2, 0.06, 0, crate)
-    const t = plane(0.3, 0.12, tagMat(p), crate)
-    t.position.set(0, 0.07, cd / 2 + 0.016)
-    crate.updateMatrix()
-    const frame = c.frame.clone().multiply(crate.matrix)
-    const [uw, uh, ud] = unitSize(p)
-    const pitch = 0.94
-    const nx = Math.max(1, Math.floor((cw - 0.03) / (uw * pitch))), nz = Math.max(1, Math.floor((cd - 0.03) / (ud * pitch)))
-    const inst = instOf(c.insts, p)
-    for (let layer = 0; layer < 3; layer++)
-      for (let ix = 0; ix < nx + (layer ? 0 : 1); ix++)
-        for (let iz = 0; iz < nz; iz++) {
-          const x = -cw / 2 + 0.015 + uw * 0.5 + ix * uw * pitch + (R() - 0.5) * uw * 0.14 + (layer % 2 ? uw * 0.47 : 0)
-          const zz = -cd / 2 + 0.015 + ud * 0.5 + iz * ud * pitch + (R() - 0.5) * ud * 0.14 + (layer % 2 ? ud * 0.3 : 0)
-          if (Math.abs(x) > cw / 2 - uw * 0.42 || Math.abs(zz) > cd / 2 - ud * 0.3) continue
-          // heap toward the middle so each crate reads as a mound
-          const edge = Math.max(Math.abs(x) / (cw / 2), Math.abs(zz) / (cd / 2))
-          if (layer === 1 && (edge > 0.86 || R() < 0.12)) continue
-          if (layer === 2 && (edge > 0.6 || R() < 0.3)) continue
-          const q = new THREE.Quaternion().setFromEuler(new THREE.Euler((R() - 0.5) * 0.5, R() * 6.28, (R() - 0.5) * 0.5))
-          const sc = 0.9 + R() * 0.18
-          inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0.015 + layer * uh * 0.72, zz), q, new THREE.Vector3(sc, sc, sc)).premultiply(frame))
-        }
+const OAK = () => mat('#D2B98F', { roughness: 0.56 })
+const OAK_DEEP = () => mat('#A98A5F', { roughness: 0.62 })
+const WALNUT = () => mat('#6F5439', { roughness: 0.5 })
+const SAGE = () => mat('#DDE3CF', { roughness: 0.68 })
+const heapBeds = new Map<string, THREE.MeshStandardMaterial>()
+const heapBed = (p: Product) => {
+  let m = heapBeds.get(p.id)
+  if (!m) heapBeds.set(p.id, (m = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.colors[0]).multiplyScalar(0.58), roughness: 0.9 })))
+  return m
+}
+
+type CrateOpts = { y: number; z: number; tilt: number; w: number; d: number; peak: number; owner: string; tagged?: boolean }
+
+/** A slatted oak crate with a produce heap: a shaped bed under a single packed surface, so it looks full without hidden stock. */
+function produceCrate(parent: THREE.Object3D, p: Product, c: Ctx, parentFrame: THREE.Matrix4, o: CrateOpts) {
+  const { w, d, peak, owner } = o, R = c.R
+  const crate = new THREE.Group()
+  crate.position.set(0, o.y, o.z)
+  crate.rotation.x = o.tilt
+  parent.add(crate)
+  crate.updateMatrix()
+  const frame = parentFrame.clone().multiply(crate.matrix)
+  box(w, 0.016, d, OAK_DEEP(), 0, 0.008, 0, crate)
+  ;[-1, 1].forEach((e) => {
+    for (let k = 0; k < 2; k++) {
+      box(w, 0.04, 0.014, OAK(), 0, 0.036 + k * 0.05, (e * d) / 2, crate)
+      box(0.014, 0.04, d, OAK(), (e * w) / 2, 0.036 + k * 0.05, 0, crate)
+    }
+    ;[-1, 1].forEach((f) => box(0.03, 0.12, 0.03, OAK_DEEP(), (e * w) / 2, 0.06, (f * d) / 2, crate))
   })
-  if (camera) {
-    // the dark-store camera concept, made physical: a small overhead camera above each tray
+  const shape = (x: number, z: number) => {
+    const ex = Math.min(1, Math.abs(x) / (w / 2)), ez = Math.min(1, Math.abs(z) / (d / 2))
+    return peak * Math.pow(1 - Math.pow(ex, 4), 0.8) * Math.pow(1 - ez * ez, 0.72)
+  }
+  const bed = new THREE.PlaneGeometry(w - 0.025, d - 0.025, 12, 5).rotateX(-Math.PI / 2)
+  const bp = bed.attributes.position
+  for (let i = 0; i < bp.count; i++) bp.setY(i, 0.075 + shape(bp.getX(i), bp.getZ(i)) * 0.9)
+  bed.computeVertexNormals()
+  const bedMesh = new THREE.Mesh(bed, heapBed(p))
+  bedMesh.userData.productId = owner
+  bedMesh.userData.keep = true
+  crate.add(bedMesh)
+  const plate = box(0.34, 0.1, 0.008, WALNUT(), 0, 0.06, d / 2 + 0.012, crate)
+  plate.userData.noCast = true
+  if (o.tagged !== false) { const t = plane(0.3, 0.09, tagMat(p), crate); t.position.set(0, 0.06, d / 2 + 0.018) }
+
+  const [uw, uh, ud] = unitSize(p)
+  const long = p.shape === 'carrot' || p.shape === 'banana' || p.shape === 'spinach'
+  const px = uw * (long ? 0.6 : 0.8), pz = ud * (long ? 0.68 : 0.72)
+  const inst = instOf(c.insts, p)
+  const place = (x: number, z: number, lift: number) => {
+    const q = new THREE.Quaternion().setFromEuler(long
+      ? new THREE.Euler((R() - 0.5) * 0.28, (R() < 0.5 ? 0 : Math.PI) + (R() - 0.5) * 0.46, (R() - 0.5) * 0.2)
+      : new THREE.Euler((R() - 0.5) * 0.62, R() * 6.28, (R() - 0.5) * 0.62))
+    const sc = 0.92 + R() * 0.16
+    inst.mats.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0.07 + shape(x, z) + lift - uh * 0.16, z), q, new THREE.Vector3(sc, sc, sc)).premultiply(frame))
+    inst.owners.push(owner)
+  }
+  const mx = w / 2 - uw * (long ? 0.34 : 0.42), mz = d / 2 - ud * 0.36
+  let row = 0
+  for (let z = -mz; z <= mz + 1e-3; z += pz, row++)
+    for (let x = -mx + (row % 2 ? px / 2 : 0); x <= mx + 1e-3; x += px) {
+      place(x + (R() - 0.5) * px * 0.16, z + (R() - 0.5) * pz * 0.16, 0)
+      // a loose second layer on the crown keeps the heap from looking machine laid
+      if (shape(x, z) > peak * 0.62 && R() < 0.2) place(x + px * 0.42, z + pz * 0.3, uh * 0.46)
+    }
+}
+
+/** Produce wall: a walnut plinth, oak slatted risers and five heaped crates stepping up a sage panel. */
+function crateBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, camera: boolean) {
+  const W = run.bay, D = c.hall.depth, atrium = !!c.hall.atrium
+  const wallH = atrium ? 2.62 : 1.9
+  box(W, wallH, 0.04, SAGE(), 0, wallH / 2, -D / 2 + 0.02, bay)
+  for (let x = -W / 2 + 0.125; x < W / 2; x += 0.25) box(0.006, wallH, 0.006, mat('#C8D0B8', { roughness: 0.7 }), x, wallH / 2, -D / 2 + 0.043, bay)
+  box(W - 0.02, 0.09, D - 0.02, WALNUT(), 0, 0.045, 0, bay)
+  box(W - 0.04, 0.42, 0.34, OAK_DEEP(), 0, 0.3, 0.26, bay)
+  box(W - 0.04, 0.72, 0.3, OAK_DEEP(), 0, 0.45, -0.04, bay)
+  box(W - 0.04, 1.02, 0.3, OAK_DEEP(), 0, 0.6, -0.3, bay)
+  for (let x = -W / 2 + 0.07; x < W / 2 - 0.03; x += 0.105) box(0.078, 0.37, 0.012, OAK(), x, 0.285, 0.436, bay)
+  box(0.035, wallH, 0.05, OAK(), -W / 2, wallH / 2, -D / 2 + 0.05, bay)
+  const tiers = [
+    { y: 0.5, z: 0.25, d: 0.36, peak: 0.17 },
+    { y: 0.8, z: -0.03, d: 0.33, peak: 0.16 },
+    { y: 1.1, z: -0.29, d: 0.28, peak: 0.14 },
+    ...(atrium ? [{ y: 1.62, z: -0.31, d: 0.22, peak: 0.09 }, { y: 2.08, z: -0.33, d: 0.19, peak: 0.07 }] : []),
+  ]
+  tiers.forEach((t, i) => {
+    if (i > 2) {
+      box(W - 0.03, 0.03, 0.3, OAK(), 0, t.y - 0.05, -D / 2 + 0.17, bay)
+      box(W - 0.08, 0.007, 0.012, LED, 0, t.y + 0.34, -D / 2 + 0.13, bay)
+    }
+    produceCrate(bay, p, c, c.frame, { y: t.y, z: t.z, tilt: i > 2 ? 0.34 : 0.28, w: W - 0.07, d: t.d, peak: t.peak, owner: p.id })
+  })
+  // the overhead tray camera stays in the standard halls; the tall produce wall keeps a clean top line
+  if (camera && !atrium) {
     box(0.04, 0.04, 0.55, GONDOLA_METAL(), 0, 2.35, -0.05, bay)
     const cam = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), GONDOLA_METAL())
     cam.rotation.x = Math.PI
@@ -670,38 +709,24 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
 /** A produce island on the aisle centre line: tilted crates down both long sides. */
 function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[]) {
   const { ox } = c.hall
-  const wood = mat('#B08F5E', { roughness: 0.85 }), darkWood = mat('#7A5F3C', { roughness: 0.85 })
   const isl = new THREE.Group()
   isl.position.set(ox, 0, z)
   g.add(isl)
-  box(0.86, 0.5, 3.0, darkWood, 0, 0.25, 0, isl)
-  box(0.34, 0.86, 2.9, darkWood, 0, 0.43, 0, isl)
-  const crateL = 0.72, crateD = 0.42
+  box(1.0, 0.08, 3.08, WALNUT(), 0, 0.04, 0, isl)
+  box(0.88, 0.44, 3.0, OAK_DEEP(), 0, 0.3, 0, isl)
+  box(0.34, 0.84, 2.92, OAK_DEEP(), 0, 0.46, 0, isl)
+  box(0.38, 0.03, 2.96, OAK(), 0, 0.885, 0, isl)
   ;[-1, 1].forEach((side) => {
+    for (let t = -1.44; t < 1.46; t += 0.105) box(0.012, 0.4, 0.078, OAK(), side * 0.446, 0.29, t, isl)
     for (let k = 0; k < 4; k++) {
       const p = PRODUCT_BY_ID[ids[(k + (side > 0 ? 2 : 0)) % ids.length]]
-      const crate = new THREE.Group()
-      crate.position.set(side * 0.37, 0.56, -1.11 + k * 0.74)
-      crate.rotation.set(0, 0, -side * 0.24)
-      isl.add(crate)
-      box(crateD, 0.03, crateL, wood, 0, 0, 0, crate)
-      ;[-1, 1].forEach((e) => {
-        box(crateD, 0.13, 0.022, wood, 0, 0.06, (e * crateL) / 2, crate)
-        box(0.022, 0.13, crateL, wood, (e * crateD) / 2, 0.06, 0, crate)
-      })
-      isl.updateMatrix(); crate.updateMatrix()
-      const frame = new THREE.Matrix4().makeTranslation(ox, 0, z).multiply(crate.matrix)
-      const [uw, uh, ud] = unitSize(p)
-      for (let layer = 0; layer < 2; layer++) {
-        const nx = Math.max(1, Math.floor((crateD - 0.04) / (uw * 0.94))), nz = Math.max(1, Math.floor((crateL - 0.04) / (ud * 0.94)))
-        for (let ix = 0; ix < nx; ix++)
-          for (let iz = 0; iz < nz; iz++) {
-            if (layer && c.R() < 0.18 + layer * 0.16) continue
-            const px = ((ix + 0.5) / nx - 0.5) * (crateD - 0.05) + (c.R() - 0.5) * 0.015
-            const pz = ((iz + 0.5) / nz - 0.5) * (crateL - 0.05) + (c.R() - 0.5) * 0.015
-            put(c, p, p.id, px, 0.016 + layer * uh * 0.72, pz, 0.9 + c.R() * 0.18, c.R() * 6.28, frame)
-          }
-      }
+      const holder = new THREE.Group()
+      holder.position.set(side * 0.34, 0, -1.11 + k * 0.74)
+      holder.rotation.y = side * Math.PI / 2
+      isl.add(holder)
+      holder.updateMatrix()
+      const frame = new THREE.Matrix4().makeTranslation(ox, 0, z).multiply(holder.matrix)
+      produceCrate(holder, p, c, frame, { y: 0.54, z: 0.02, tilt: 0.26, w: 0.7, d: 0.42, peak: 0.16, owner: p.id })
     }
   })
   addRect({ x0: ox - 0.62, x1: ox + 0.62, z0: z - 1.56, z1: z + 1.56 }, c.hall.id)
@@ -730,7 +755,7 @@ function buildHall(hall: Hall) {
   const applyQuality = () => {
     const on = quality.reflections
     mirror.visible = on
-    for (const [m, o] of [[floorMat, 0.9], [runnerMat, 0.94]] as const) { m.transparent = on; m.opacity = on ? o : 1; m.needsUpdate = true }
+    for (const [m, o] of [[floorMat, 0.95], [runnerMat, 0.97]] as const) { m.transparent = on; m.opacity = on ? o : 1; m.needsUpdate = true }
   }
   applyQuality()
   onQuality(applyQuality)
@@ -901,11 +926,11 @@ function buildHall(hall: Hall) {
     })
     const perUnit = inst.owners.length === inst.mats.length
     for (const idx of blocks.values()) {
-      const tints = isProduce(inst.p) ? idx.map(() => 0.9 + R() * 0.1) : null
+      const tints = isProduce(inst.p) ? idx.map(() => 0.84 + R() * 0.2) : null
       for (const part of productParts(inst.p)) {
         const im = new THREE.InstancedMesh(part.geo, part.mat, idx.length)
         idx.forEach((source, i) => im.setMatrixAt(i, inst.mats[source]))
-        tints?.forEach((l, i) => im.setColorAt(i, col.setHSL(0, 0, l)))
+        tints?.forEach((l, i) => im.setColorAt(i, col.setRGB(l * (0.97 + (i % 5) * 0.012), l, l * (0.94 + (i % 7) * 0.012))))
         // background packs open the product of the bay they sit in
         im.userData.productId = (perUnit ? inst.owners[idx[0]] : inst.owners[0]) ?? inst.p.id
         if (perUnit) im.userData.owners = idx.map((source) => inst.owners[source])
