@@ -15,9 +15,9 @@ import { Fountain } from './Fountain'
 import { WayChevrons } from './WayChevrons'
 import { Escalators } from './Escalators'
 import { Greenery } from './Greenery'
-import { MarketStalls } from './MarketStalls'
 import { EntranceMat, Shoppers, SunRays } from './Ambience'
 import { StoreInterior } from '../store/StoreInterior'
+import { ShelfMotion } from '../store/ShelfMotion'
 import { HALLS, HALL_IDS } from '../../data/storeLayout'
 import { useMall } from '../../state/useMall'
 import { setReflections } from '../../lib/quality'
@@ -86,7 +86,6 @@ function Locations() {
         <Fountain />
         <Escalators />
         <Greenery />
-        <MarketStalls />
         <SunRays />
         <Shoppers />
         <EntranceMat />
@@ -176,7 +175,7 @@ export function MallEnvironment() {
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.02
         scene.background = new THREE.Color('#E4F0F5')
-        scene.fog = new THREE.Fog('#F8EFE2', 58, 150)
+        scene.fog = new THREE.Fog('#F8EFE2', 90, 215)
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
         scene.environmentIntensity = 0.62
@@ -184,6 +183,7 @@ export function MallEnvironment() {
     >
       <MallLighting sun={sun} />
       <Locations />
+      <ShelfMotion />
       <CartRig sun={sun} />
       <WayChevrons />
       <FriendMarkers />

@@ -18,6 +18,8 @@ type Fulfilment = { source: string; fee: (subtotal: number) => number; freeAbove
 const FULFIL: Record<string, Fulfilment> = {
   bigbasket: { source: 'Fulfilled by a nearby partner store', fee: (s) => (s < 299 ? 25 : 0), freeAbove: 299 },
   palette: { source: 'Fulfilled by a participating retailer', fee: (s) => (s < 499 ? 40 : 0), freeAbove: 499 },
+  sampann: { source: 'Fulfilled by a nearby partner store', fee: (s) => (s < 299 ? 25 : 0), freeAbove: 299 },
+  irth: { source: 'Fulfilled by a participating retailer', fee: (s) => (s < 499 ? 40 : 0), freeAbove: 499 },
   croma: { source: 'Fulfilled by a participating retailer', fee: () => 0 },
   zudio: { source: 'Fulfilled by a participating retailer', fee: (s) => (s < 399 ? 39 : 0), freeAbove: 399 },
   'westside-home': { source: 'Fulfilled by a participating retailer', fee: (s) => (s < 999 ? 79 : 0), freeAbove: 999 },

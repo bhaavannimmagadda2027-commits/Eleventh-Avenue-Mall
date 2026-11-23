@@ -1,7 +1,7 @@
 // World layout of the galleria lobby (metres). -z runs from the entrance into the mall.
 export const L = {
   entranceZ: 8, // glass entrance facade
-  endZ: -72, // far glass wall
+  endZ: -135, // far glass wall
   voidHalf: 7.4, // half-width of the open atrium under the glass roof
   shopX: 11, // ground and upper storefront line
   upperY: 4.8, // first-floor level
@@ -11,13 +11,12 @@ export const L = {
   columnStep: 9, // structural rhythm along z
   spawn: { x: 0, z: 3.2, yaw: 0 },
   // ground/upper storefront slots (centres between columns)
-  slots: [-4.5, -13.5, -22.5, -31.5, -40.5, -49.5, -58.5],
+  slots: [-4.5, -13.5, -22.5, -31.5, -40.5, -49.5, -58.5, -67.5, -76.5, -85.5, -94.5, -103.5, -112.5, -121.5],
   fountain: { x: 0, z: -7, r: 1.75 },
   escalators: { z0: -25, z1: -33, x: 1.35 },
   bridgeZ: -35.2,
-  lounges: [-16.5, -47],
-  stalls: [-9, -18, -36, -45, -54], // oak market stalls on the column line
-  edgeTrees: [0, -27, -63],
+  lounges: [-16.5, -47, -78, -109],
+  edgeTrees: [0, -27, -54, -81, -108, -126],
 }
 
 export type Circle = { x: number; z: number; r: number }

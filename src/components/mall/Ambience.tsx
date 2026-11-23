@@ -10,7 +10,7 @@ export function SunRays() {
   const group = useMemo(() => {
     const g = new THREE.Group()
     const m = new THREE.MeshBasicMaterial({ map: raysTex(), transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide, fog: false })
-    ;[[-2.5, -3], [2.2, -15], [-1.5, -29], [3, -43], [-2.8, -57]].forEach(([x, z]) => {
+    ;[[-2.5, -3], [2.2, -15], [-1.5, -29], [3, -43], [-2.8, -57], [2.4, -71], [-2, -86], [2.8, -100], [-2.6, -115]].forEach(([x, z]) => {
       const p = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 13), m)
       p.position.set(x, 6.2, z)
       p.rotation.set(0, 0.25, -0.32)
@@ -62,12 +62,16 @@ function person(shirt: string, skin: string, trousers: string) {
 export function Shoppers() {
   const walkers = useMemo<Walker[]>(() => {
     const spec: [number, number, number, number, string, string, string][] = [
-      [-3.9, 2, -60, 0.55, '#E8E2D6', '#C48A62', '#5B6470'],
-      [3.8, -62, 0, 0.5, '#9DB0C3', '#A86F4D', '#3F4652'],
-      [9.5, -8, -66, 0.45, '#D8C3A5', '#D9A27C', '#6B5E52'],
-      [-9.5, -60, -2, 0.5, '#B9C7B4', '#8D5A3C', '#45484F'],
+      [-3.9, 2, -122, 0.55, '#E8E2D6', '#C48A62', '#5B6470'],
+      [3.8, -124, 0, 0.5, '#9DB0C3', '#A86F4D', '#3F4652'],
+      [9.5, -8, -128, 0.45, '#D8C3A5', '#D9A27C', '#6B5E52'],
+      [-9.5, -126, -2, 0.5, '#B9C7B4', '#8D5A3C', '#45484F'],
       [-4.4, -40, -18, 0.42, '#F1ECE3', '#C99372', '#7B6E62'],
       [4.2, -20, -52, 0.5, '#C9A99A', '#B07A55', '#3D4148'],
+      [-4.1, -70, -118, 0.46, '#C7B6D8', '#C48A62', '#4A4F58'],
+      [4.4, -116, -66, 0.52, '#E5D4B8', '#9C6848', '#59616C'],
+      [9.4, -100, -60, 0.44, '#AFC4BA', '#D9A27C', '#3F4652'],
+      [-9.4, -64, -112, 0.48, '#E2C0B0', '#A86F4D', '#6B5E52'],
     ]
     return spec.map(([x, z0, z1, speed, shirt, skin, tr]) => {
       const { g, legs } = person(shirt, skin, tr)

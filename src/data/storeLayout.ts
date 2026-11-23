@@ -107,6 +107,30 @@ export const HALLS: Record<string, Hall> = {
       { section: 'decor', side: 1, z0: -5.4, fixture: 'home', bay: 1.5, sign: 'DÉCOR', products: ['lamp', 'vase'] },
     ],
   },
+  irth: {
+    ...base, id: 'irth', ox: 500, half: 3.9, backZ: -15, light: 'warm',
+    theme: { wall: '#F8F2E9', wallGlow: '#F0E5D5', floor: '#FAF4EB', accent: '#8A6A3A', signInk: '#2B2433' },
+    back: { title: 'IRTH', sub: 'Handbags, wallets and sunglasses' },
+    hanging: [{ z: -4.2, text: 'BAGS & EYEWEAR', sub: 'New season styles' }, { z: -10.2, text: 'SMALL LEATHER & SCARVES', sub: 'Finishing touches' }],
+    runs: [
+      { section: 'handbags', side: -1, z0: -0.6, fixture: 'folded', bay: 1.5, sign: 'HANDBAGS', products: ['bag-tote', 'bag-sling', 'bag-work', 'bag-clutch'] },
+      { section: 'wallets', side: -1, z0: -7.2, fixture: 'vanity', bay: 1.5, sign: 'WALLETS & BELTS', products: ['wallet', 'cardcase', 'belt'] },
+      { section: 'eyewear', side: 1, z0: -0.6, fixture: 'vanity', bay: 1.5, sign: 'SUNGLASSES', products: ['sunglasses', 'wayfarers', 'readers'] },
+      { section: 'scarves', side: 1, z0: -5.8, fixture: 'folded', bay: 1.5, sign: 'SCARVES & HATS', products: ['stole', 'sunhat', 'umbrella'] },
+    ],
+  },
+  sampann: {
+    ...base, id: 'sampann', ox: 560, half: 4.0, backZ: -18, light: 'neutral',
+    theme: { wall: '#FBF5EA', wallGlow: '#F3E7D3', floor: '#FBF6EC', accent: '#B5381F', signInk: '#3A2415' },
+    back: { title: 'Tata Sampann', sub: 'Your everyday kitchen staples' },
+    hanging: [{ z: -4.4, text: 'GRAINS & SPICES', sub: 'Stock up the pantry' }, { z: -11.4, text: 'DALS & ESSENTIALS', sub: 'Family size packs' }],
+    runs: [
+      { section: 'grains', side: -1, z0: -0.6, fixture: 'bulk', bay: 1.7, sign: 'RICE, ATTA & FLOURS', products: ['ts-basmati', 'ts-poha', 'ts-atta', 'ts-besan'] },
+      { section: 'pulses', side: -1, z0: -8, fixture: 'bulk', bay: 1.7, sign: 'DALS & PULSES', products: ['ts-toor', 'ts-moong', 'ts-chana', 'ts-rajma'] },
+      { section: 'spices', side: 1, z0: -0.6, fixture: 'gondola', bay: 1.6, sign: 'SPICES', products: ['ts-turmeric', 'ts-chilli', 'ts-garam', 'ts-jeera'] },
+      { section: 'essentials', side: 1, z0: -7.4, fixture: 'gondola', bay: 1.6, sign: 'OIL, GHEE, SALT & SUGAR', products: ['ts-ghee', 'ts-mustard', 'ts-salt', 'ts-sugar'] },
+    ],
+  },
 }
 
 export const HALL_IDS = Object.keys(HALLS)

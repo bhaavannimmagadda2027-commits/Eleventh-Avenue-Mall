@@ -21,7 +21,7 @@ const PHONE_ATRIUM_PITCH = -0.24
 const PHONE_LIFT = 0.11 // portrait: shift the picture up so the cart clears the joystick and cart bar
 const WIDE_LIFT = 0.09 // landscape: just enough to keep the cart's display on screen
 const LANE = 4.6 // clear walking lanes either side of the atrium axis
-const CROSS_Z = [2, -11.6, -21, -40.5, -53, -63] // where the atrium axis is free to cross
+const CROSS_Z = [2, -11.6, -21, -40.5, -53, -63, -72, -90, -102, -120] // where the atrium axis is free to cross
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 /** dev-only: lets automated checks step frames at a fixed rate while the browser tab is in the background */

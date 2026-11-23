@@ -191,6 +191,65 @@ const SPECS: Partial<Record<SectionId, Spec[]>> = {
     ['Cushion cover', 'Westside Home', '40 × 40 cm', 'cushion', [0.4, 0.4, 0.13], ['#2F4A7A', '#E9E3D8'], 'floral'],
     ['Cushion cover', 'Westside Home', '40 × 40 cm', 'cushion', [0.4, 0.4, 0.13], ['#7C9877', '#F4F1EA'], 'stripes'],
   ],
+  // IRTH
+  handbags: [
+    ['Mini tote', 'IRTH', 'Small', 'backpack', [0.26, 0.26, 0.1], ['#C9A679', '#5A3A24'], 'plain'],
+    ['Hobo bag', 'IRTH', 'Medium', 'backpack', [0.3, 0.3, 0.12], ['#7A2E3A', '#E9D2AE'], 'plain'],
+    ['Satchel', 'IRTH', 'Medium', 'backpack', [0.3, 0.28, 0.12], ['#3E5A4E', '#E9D2AE'], 'plain'],
+    ['Quilted sling', 'IRTH', 'Small', 'backpack', [0.22, 0.18, 0.08], ['#F1ECE3', '#2B2433'], 'checks'],
+    ['Pouch', 'IRTH', 'Small', 'box', [0.2, 0.12, 0.04], ['#D9A23A', '#3A2418'], 'plain'],
+  ],
+  wallets: [
+    ['Zip wallet', 'IRTH', 'Long', 'box', [0.19, 0.1, 0.025], ['#7A2E3A', '#E9D2AE'], 'plain'],
+    ['Coin pouch', 'IRTH', 'Small', 'box', [0.1, 0.08, 0.02], ['#C9A679', '#3A2418'], 'plain'],
+    ['Passport cover', 'IRTH', 'Travel', 'box', [0.1, 0.14, 0.012], ['#2F4A7A', '#D9C5A5'], 'plain'],
+    ['Key case', 'IRTH', 'Small', 'box', [0.08, 0.11, 0.02], ['#3E5A4E', '#E9D2AE'], 'plain'],
+    ['Belt, tan', 'IRTH', '36 in', 'box', [0.12, 0.12, 0.05], ['#B98F5F', '#3A2418'], 'plain'],
+  ],
+  eyewear: [
+    ['Round sunglasses', 'IRTH', 'UV400', 'box', [0.15, 0.07, 0.06], ['#7A5B8C', '#F4F1E6'], 'sun'],
+    ['Cat-eye sunglasses', 'IRTH', 'UV400', 'box', [0.15, 0.07, 0.06], ['#B33A68', '#F4E1E6'], 'sun'],
+    ['Sport sunglasses', 'IRTH', 'UV400', 'box', [0.16, 0.07, 0.06], ['#1E1E22', '#3FB6A8'], 'sun'],
+    ['Glasses case', 'IRTH', 'Hard shell', 'box', [0.16, 0.06, 0.06], ['#C9A679', '#3A2418'], 'plain'],
+    ['Lens wipes', 'IRTH', '30 pcs', 'box', [0.09, 0.12, 0.05], ['#E6F0F7', '#2F4A7A'], 'drop'],
+  ],
+  scarves: [
+    ['Cotton scarf', 'IRTH', '180 cm', 'folded', [0.22, 0.04, 0.17], ['#7C9877', '#F4F1E6'], 'stripes'],
+    ['Silk scarf', 'IRTH', '90 cm', 'folded', [0.2, 0.03, 0.16], ['#2F4A7A', '#E8C547'], 'floral'],
+    ['Wool stole', 'IRTH', '200 cm', 'folded', [0.24, 0.05, 0.18], ['#B85A1E', '#F2E2B8'], 'checks'],
+    ['Canvas cap', 'IRTH', 'Adjustable', 'cap', [0.17, 0.09, 0.22], ['#D9C5A5', '#3A2418']],
+    ['Bucket hat', 'IRTH', 'Adjustable', 'cap', [0.2, 0.09, 0.22], ['#3E5A4E', '#F4F1E6']],
+  ],
+  // Tata Sampann
+  grains: [
+    ['Sona masoori', 'Tata Sampann', '5 kg', 'pillow', [0.3, 0.42, 0.11], ['#F4EEDF', '#1F5FA8'], 'rice'],
+    ['Multigrain atta', 'Tata Sampann', '5 kg', 'pillow', [0.3, 0.42, 0.11], ['#8A5A32', '#F2E2B8'], 'wheat'],
+    ['Maida', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#FBFBF7', '#B5381F'], 'wheat'],
+    ['Rava', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#F2E2B8', '#2E7D4A'], 'wheat'],
+    ['Idli rice', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#E8F0E2', '#2E7D4A'], 'rice'],
+  ],
+  pulses: [
+    ['Masoor dal', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#D9722A', '#F4EEDF'], 'dal'],
+    ['Urad dal', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#F1ECE3', '#2B2433'], 'dal'],
+    ['Chana dal', 'Tata Sampann', '1 kg', 'pillow', [0.17, 0.25, 0.07], ['#E8A31E', '#7A1E1E'], 'dal'],
+    ['Green moong', 'Tata Sampann', '500 g', 'pillow', [0.15, 0.22, 0.06], ['#6F9A3A', '#F4EEDF'], 'dal'],
+    ['Black chana', 'Tata Sampann', '500 g', 'pillow', [0.15, 0.22, 0.06], ['#4A3226', '#E8B84A'], 'dal'],
+  ],
+  spices: [
+    ['Coriander powder', 'Tata Sampann', '200 g', 'box', [0.09, 0.14, 0.05], ['#8A9A3A', '#F2E2B8'], 'dal'],
+    ['Sambar masala', 'Tata Sampann', '100 g', 'box', [0.08, 0.13, 0.045], ['#B5381F', '#F2C230'], 'chilli'],
+    ['Chole masala', 'Tata Sampann', '100 g', 'box', [0.08, 0.13, 0.045], ['#6A3419', '#F2C230'], 'chilli'],
+    ['Kitchen king', 'Tata Sampann', '100 g', 'box', [0.08, 0.13, 0.045], ['#E8762A', '#3A2418'], 'chilli'],
+    ['Black pepper', 'Tata Sampann', '100 g', 'jar', [0.07, 0.11, 0.07], ['#2B2522', '#E8B84A'], 'dal'],
+    ['Mustard seeds', 'Tata Sampann', '200 g', 'jar', [0.08, 0.12, 0.08], ['#5A3A24', '#F4EEDF'], 'dal'],
+  ],
+  essentials: [
+    ['Sunflower oil', 'Tata Sampann', '1 L', 'bottle', [0.085, 0.27, 0.085], ['#F2D35A', '#D98A1E'], 'oil'],
+    ['Groundnut oil', 'Tata Sampann', '1 L', 'bottle', [0.085, 0.27, 0.085], ['#E8C21F', '#2E7D4A'], 'oil'],
+    ['Rock salt', 'Tata Salt', '1 kg', 'pillow', [0.13, 0.2, 0.05], ['#F4DCE0', '#B33A68'], 'rice'],
+    ['Low sodium salt', 'Tata Salt', '1 kg', 'pillow', [0.13, 0.2, 0.05], ['#E6F0F7', '#1C4FA1'], 'rice'],
+    ['Jaggery', 'Tata Sampann', '500 g', 'block', [0.12, 0.06, 0.1], ['#A8672A', '#F2E2B8'], 'honey'],
+  ],
   decor: [
     ['Bud vase', 'Westside Home', '18 cm', 'vase', [0.12, 0.2, 0.12], ['#2F4A7A', '#20345A']],
     ['Vase, sage', 'Westside Home', '24 cm', 'vase', [0.14, 0.24, 0.14], ['#7C9877', '#5E7A5A']],
@@ -207,6 +266,8 @@ const STORE: [string, number, SectionId[]][] = [
   ['croma', 15, ['audio', 'computing', 'phones', 'tv']],
   ['zudio', 5, ['kidswear', 'kidsbasics', 'kidsshoes', 'kidsacc']],
   ['westside-home', 7, ['kitchen', 'cleaning', 'bedding', 'decor']],
+  ['irth', 8, ['handbags', 'wallets', 'eyewear', 'scarves']],
+  ['sampann', 1, ['grains', 'pulses', 'spices', 'essentials']],
 ]
 const storeOf = (section: SectionId): [string, number] => {
   const hit = STORE.find(([, , list]) => list.includes(section))

@@ -13,6 +13,7 @@ import { productParts, tagTex, unitSize } from '../../lib/productArt'
 import { fillerFor } from '../../data/filler'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
 import { onQuality, quality } from '../../lib/quality'
+import { registerStock } from '../../lib/shelfMotion'
 import { M, basic, box, enableShadows, findTag, mat, mergeStatic, plane } from '../mall/build'
 import { font } from '../../styles/tokens'
 
@@ -964,6 +965,7 @@ function buildHall(hall: Hall) {
     const perUnit = inst.owners.length === inst.mats.length
     for (const idx of blocks.values()) {
       const tints = isProduce(inst.p) ? idx.map(() => 0.84 + R() * 0.2) : null
+      const cohort: THREE.InstancedMesh[] = []
       for (const part of productParts(inst.p)) {
         const im = new THREE.InstancedMesh(part.geo, part.mat, idx.length)
         idx.forEach((source, i) => im.setMatrixAt(i, inst.mats[source]))
@@ -973,8 +975,10 @@ function buildHall(hall: Hall) {
         if (perUnit) im.userData.owners = idx.map((source) => inst.owners[source])
         im.computeBoundingSphere()
         stock.push(im)
+        cohort.push(im)
         g.add(im)
       }
+      registerStock(hall.id, ox, cohort, idx.map((source) => inst.mats[source]), idx.map((source) => (perUnit ? inst.owners[source] : inst.owners[0]) ?? inst.p.id))
     }
   }
 

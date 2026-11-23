@@ -16,6 +16,8 @@ export type SectionId = 'vegetables' | 'fruits' | 'bakery' | 'dairy' | 'beverage
   | 'audio' | 'computing' | 'phones' | 'tv'
   | 'kidswear' | 'kidsbasics' | 'kidsshoes' | 'kidsacc'
   | 'kitchen' | 'cleaning' | 'bedding' | 'decor'
+  | 'handbags' | 'wallets' | 'eyewear' | 'scarves'
+  | 'grains' | 'pulses' | 'spices' | 'essentials'
 
 /** Packaging art drawn on the pack's front face. */
 export type Art = 'cow' | 'curd' | 'paneer' | 'butter' | 'egg' | 'cheese' | 'flakes' | 'muesli' | 'oats' | 'honey' | 'rice' | 'wheat' | 'dal' | 'oil' | 'chips' | 'chilli' | 'biscuit' | 'coffee' | 'tea' | 'orange' | 'mango' | 'bread'
@@ -45,7 +47,7 @@ export type Product = {
 const bb = 'bigbasket'
 const P = (p: Omit<Product, 'storeId'>): Product => ({ storeId: bb, ...p })
 const at = (storeId: string) => (p: Omit<Product, 'storeId'>): Product => ({ storeId, ...p })
-const B = at('palette'), E = at('croma'), K = at('zudio'), H = at('westside-home')
+const B = at('palette'), E = at('croma'), K = at('zudio'), H = at('westside-home'), A = at('irth'), T = at('sampann')
 
 // Products for the beauty, electronics, kids and home stores.
 const NEW: Product[] = [
@@ -98,6 +100,37 @@ const NEW: Product[] = [
   H({ id: 'cushion', section: 'bedding', name: 'Block print cushion cover', brand: 'Westside Home', size: '40 × 40 cm', price: 449, desc: 'Hand block-printed cotton cushion cover.', shape: 'cushion', dims: [0.4, 0.4, 0.13], colors: ['#E8DCC6', '#B85A1E'], art: 'checks', alt: 'bed' }),
   H({ id: 'lamp', section: 'decor', name: 'Ceramic table lamp', brand: 'Westside Home', size: '45 cm', price: 1999, desc: 'Ribbed ceramic base with a linen shade.', shape: 'lamp', dims: [0.26, 0.45, 0.26], colors: ['#F1ECE3', '#D9C5A5'], alt: 'decor' }),
   H({ id: 'vase', section: 'decor', name: 'Terracotta vase', brand: 'Westside Home', size: '28 cm', price: 899, desc: 'Hand-thrown terracotta with a matte finish.', shape: 'vase', dims: [0.16, 0.28, 0.16], colors: ['#C27A4A', '#A85F35'], alt: 'decor' }),
+  // IRTH: bags, small leather goods, eyewear, scarves
+  A({ id: 'bag-tote', section: 'handbags', name: 'Leather tote', brand: 'IRTH', size: '14 in', price: 3495, mrp: 3995, offer: '₹500 off', desc: 'Roomy structured tote with a zip pocket.', shape: 'backpack', dims: [0.34, 0.34, 0.13], colors: ['#9A5B35', '#E9D2AE'], art: 'plain', alt: 'bags' }),
+  A({ id: 'bag-sling', section: 'handbags', name: 'Crossbody sling', brand: 'IRTH', size: 'Compact', price: 1995, desc: 'Light everyday sling with an adjustable strap.', shape: 'backpack', dims: [0.24, 0.2, 0.08], colors: ['#2F2A33', '#C9A679'], art: 'plain', alt: 'bags' }),
+  A({ id: 'bag-work', section: 'handbags', name: 'Laptop work bag', brand: 'IRTH', size: '15.6 in', price: 4295, desc: 'Padded laptop sleeve in a clean work silhouette.', shape: 'backpack', dims: [0.38, 0.32, 0.12], colors: ['#49607A', '#E7DFD2'], art: 'plain', alt: 'bags' }),
+  A({ id: 'bag-clutch', section: 'handbags', name: 'Evening clutch', brand: 'IRTH', size: 'Small', price: 1495, desc: 'Slim clutch with a detachable chain.', shape: 'box', dims: [0.22, 0.12, 0.04], colors: ['#B33A68', '#E9CF95'], art: 'star', alt: 'bags' }),
+  A({ id: 'wallet', section: 'wallets', name: 'Bifold wallet', brand: 'IRTH', size: '8 card slots', price: 1295, desc: 'Full grain leather bifold with RFID lining.', shape: 'box', dims: [0.11, 0.095, 0.025], colors: ['#6A3F25', '#E9D2AE'], art: 'plain', alt: 'small' }),
+  A({ id: 'cardcase', section: 'wallets', name: 'Slim card case', brand: 'IRTH', size: '6 card slots', price: 795, desc: 'Pocket-friendly card holder.', shape: 'box', dims: [0.1, 0.075, 0.012], colors: ['#27415E', '#D9C5A5'], art: 'plain', alt: 'small' }),
+  A({ id: 'belt', section: 'wallets', name: 'Reversible belt', brand: 'IRTH', size: '34 in', price: 1195, desc: 'Black and tan leather with a brushed buckle.', shape: 'box', dims: [0.12, 0.12, 0.05], colors: ['#2A2522', '#B98F5F'], art: 'plain', alt: 'small' }),
+  A({ id: 'sunglasses', section: 'eyewear', name: 'Aviator sunglasses', brand: 'IRTH', size: 'UV400', price: 1795, offer: 'Free case', desc: 'Polarised lenses in a light metal frame.', shape: 'box', dims: [0.16, 0.07, 0.06], colors: ['#1F2B3A', '#D9B66A'], art: 'sun', alt: 'eyes' }),
+  A({ id: 'wayfarers', section: 'eyewear', name: 'Square sunglasses', brand: 'IRTH', size: 'UV400', price: 1495, desc: 'Classic square frame for every day.', shape: 'box', dims: [0.15, 0.07, 0.06], colors: ['#3A2418', '#E9D2AE'], art: 'sun', alt: 'eyes' }),
+  A({ id: 'readers', section: 'eyewear', name: 'Blue light glasses', brand: 'IRTH', size: 'Zero power', price: 995, desc: 'Lightweight frames for long screen days.', shape: 'box', dims: [0.15, 0.07, 0.06], colors: ['#E7E2DA', '#5F4FA3'], art: 'drop', alt: 'eyes' }),
+  A({ id: 'stole', section: 'scarves', name: 'Printed silk stole', brand: 'IRTH', size: '180 cm', price: 1695, desc: 'Soft silk blend stole with a block print.', shape: 'folded', dims: [0.24, 0.04, 0.18], colors: ['#C9782A', '#F3E5CF'], art: 'floral', alt: 'wear' }),
+  A({ id: 'sunhat', section: 'scarves', name: 'Woven sun hat', brand: 'IRTH', size: 'Adjustable', price: 895, desc: 'Packable straw-look hat with a wide brim.', shape: 'cap', dims: [0.22, 0.1, 0.24], colors: ['#D9BE8B', '#6A3F25'], alt: 'wear' }),
+  A({ id: 'umbrella', section: 'scarves', name: 'Compact umbrella', brand: 'IRTH', size: '3 fold', price: 699, desc: 'Windproof auto-open travel umbrella.', shape: 'box', dims: [0.07, 0.25, 0.07], colors: ['#2F4A7A', '#F2E9DA'], art: 'drop', alt: 'wear' }),
+  // Tata Sampann: grains, pulses, spices, kitchen essentials
+  T({ id: 'ts-basmati', section: 'grains', name: 'Basmati rice', brand: 'Tata Sampann', size: '5 kg', price: 699, mrp: 799, offer: '₹100 off', desc: 'Aged long grain basmati.', shape: 'pillow', dims: [0.3, 0.42, 0.11], colors: ['#F4EEDF', '#B5381F'], art: 'rice', alt: 'pantry-grain' }),
+  T({ id: 'ts-poha', section: 'grains', name: 'Thick poha', brand: 'Tata Sampann', size: '1 kg', price: 89, desc: 'Clean thick poha for quick breakfasts.', shape: 'pillow', dims: [0.17, 0.25, 0.07], colors: ['#F7F1E2', '#D98A1E'], art: 'rice', alt: 'pantry-grain' }),
+  T({ id: 'ts-atta', section: 'grains', name: 'Chakki atta', brand: 'Tata Sampann', size: '5 kg', price: 289, desc: 'Whole wheat flour, stone ground.', shape: 'pillow', dims: [0.3, 0.42, 0.11], colors: ['#F2E2B8', '#B5381F'], art: 'wheat', alt: 'pantry-grain' }),
+  T({ id: 'ts-besan', section: 'grains', name: 'Besan', brand: 'Tata Sampann', size: '1 kg', price: 129, desc: 'Fine gram flour for pakoras and sweets.', shape: 'pillow', dims: [0.17, 0.25, 0.07], colors: ['#EFC95A', '#7A1E1E'], art: 'wheat', alt: 'pantry-grain' }),
+  T({ id: 'ts-toor', section: 'pulses', name: 'Unpolished toor dal', brand: 'Tata Sampann', size: '1 kg', price: 179, offer: 'Buy 2, save ₹30', desc: 'Unpolished toor dal for daily cooking.', shape: 'pillow', dims: [0.17, 0.25, 0.07], colors: ['#E8B32A', '#B5381F'], art: 'dal', alt: 'pantry-dal' }),
+  T({ id: 'ts-moong', section: 'pulses', name: 'Moong dal', brand: 'Tata Sampann', size: '1 kg', price: 169, desc: 'Split yellow moong that cooks quickly.', shape: 'pillow', dims: [0.17, 0.25, 0.07], colors: ['#EBD45A', '#2E7D4A'], art: 'dal', alt: 'pantry-dal' }),
+  T({ id: 'ts-chana', section: 'pulses', name: 'Kabuli chana', brand: 'Tata Sampann', size: '1 kg', price: 189, desc: 'Large white chickpeas.', shape: 'pillow', dims: [0.17, 0.25, 0.07], colors: ['#E6CFA0', '#8A5A32'], art: 'dal', alt: 'pantry-dal' }),
+  T({ id: 'ts-rajma', section: 'pulses', name: 'Rajma', brand: 'Tata Sampann', size: '500 g', price: 115, desc: 'Deep red kidney beans.', shape: 'pillow', dims: [0.15, 0.22, 0.06], colors: ['#8C2F2B', '#F2E2B8'], art: 'dal', alt: 'pantry-dal' }),
+  T({ id: 'ts-turmeric', section: 'spices', name: 'Turmeric powder', brand: 'Tata Sampann', size: '200 g', price: 72, desc: 'Bright, aromatic haldi.', shape: 'box', dims: [0.09, 0.14, 0.05], colors: ['#EDB21E', '#B5381F'], art: 'dal', alt: 'pantry-spice' }),
+  T({ id: 'ts-chilli', section: 'spices', name: 'Red chilli powder', brand: 'Tata Sampann', size: '200 g', price: 85, desc: 'Balanced heat and deep colour.', shape: 'box', dims: [0.09, 0.14, 0.05], colors: ['#C92E22', '#F2C230'], art: 'chilli', alt: 'pantry-spice' }),
+  T({ id: 'ts-garam', section: 'spices', name: 'Garam masala', brand: 'Tata Sampann', size: '100 g', price: 79, desc: 'A warm whole spice blend.', shape: 'box', dims: [0.08, 0.13, 0.045], colors: ['#6A3419', '#E8B84A'], art: 'chilli', alt: 'pantry-spice' }),
+  T({ id: 'ts-jeera', section: 'spices', name: 'Cumin seeds', brand: 'Tata Sampann', size: '200 g', price: 119, desc: 'Whole jeera for tempering.', shape: 'jar', dims: [0.08, 0.12, 0.08], colors: ['#8A6A3A', '#F4EEDF'], art: 'dal', alt: 'pantry-spice' }),
+  T({ id: 'ts-ghee', section: 'essentials', name: 'Cow ghee', brand: 'Tata Sampann', size: '500 ml', price: 365, desc: 'Rich, granular cow ghee.', shape: 'jar', dims: [0.09, 0.13, 0.09], colors: ['#F2D35A', '#B5381F'], art: 'oil', alt: 'pantry-basic' }),
+  T({ id: 'ts-mustard', section: 'essentials', name: 'Mustard oil', brand: 'Tata Sampann', size: '1 L', price: 185, desc: 'Cold pressed kachi ghani oil.', shape: 'bottle', dims: [0.085, 0.27, 0.085], colors: ['#E8C21F', '#B5381F'], art: 'oil', alt: 'pantry-basic' }),
+  T({ id: 'ts-salt', section: 'essentials', name: 'Iodised salt', brand: 'Tata Salt', size: '1 kg', price: 28, desc: 'Vacuum evaporated iodised salt.', shape: 'pillow', dims: [0.13, 0.2, 0.05], colors: ['#F7F7F2', '#1C4FA1'], art: 'rice', alt: 'pantry-basic' }),
+  T({ id: 'ts-sugar', section: 'essentials', name: 'Refined sugar', brand: 'Tata Sampann', size: '1 kg', price: 52, desc: 'Clean crystal sugar.', shape: 'pillow', dims: [0.15, 0.23, 0.06], colors: ['#FBFBF7', '#D98A1E'], art: 'rice', alt: 'pantry-basic' }),
 ]
 
 export const PRODUCTS: Product[] = [
@@ -172,6 +205,14 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   cleaning: 'Cleaning',
   bedding: 'Bed & bath',
   decor: 'Décor',
+  handbags: 'Handbags',
+  wallets: 'Wallets & belts',
+  eyewear: 'Sunglasses & eyewear',
+  scarves: 'Scarves & hats',
+  grains: 'Rice, atta & flours',
+  pulses: 'Dals & pulses',
+  spices: 'Spices',
+  essentials: 'Oil, ghee, salt & sugar',
   vegetables: 'Fresh vegetables',
   fruits: 'Fresh fruit',
   bakery: 'Bakery',

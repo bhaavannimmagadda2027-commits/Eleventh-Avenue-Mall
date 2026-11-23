@@ -94,7 +94,7 @@ export function Greenery() {
     })
     // trees along the atrium edge, benches in the gaps
     L.edgeTrees.forEach((z, i) => [-1, 1].forEach((s) => tree(g, leaves, s * 6.35, z, i % 2 ? 3.9 : 3.3, 0.6, R)))
-    ;[-24.9, -29.1].forEach((z) => [-1, 1].forEach((s) => bench(g, s * 6.15, z)))
+    ;[-24.9, -29.1, -78.9, -83.1].forEach((z) => [-1, 1].forEach((s) => bench(g, s * 6.15, z)))
     // greenery trailing over the balcony edge
     for (let z = L.entranceZ - 1; z > L.endZ + 1; z -= 0.55) {
       ;[-1, 1].forEach((s) => {

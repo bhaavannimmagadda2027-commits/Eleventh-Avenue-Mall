@@ -100,7 +100,7 @@ function art(g: CanvasRenderingContext2D, a: Art | undefined, cx: number, cy: nu
 }
 
 function categoryOf(p: Product) {
-  return p.storeId === 'palette' ? 'beauty' : p.storeId === 'croma' ? 'tech' : p.storeId === 'zudio' ? 'apparel' : p.storeId === 'westside-home' ? 'home' : 'food'
+  return p.storeId === 'palette' ? 'beauty' : p.storeId === 'croma' ? 'tech' : p.storeId === 'zudio' || p.storeId === 'irth' ? 'apparel' : p.storeId === 'westside-home' ? 'home' : 'food'
 }
 
 const seedOf = (t: string) => { let n = 7; for (let i = 0; i < t.length; i++) n = (n * 31 + t.charCodeAt(i)) >>> 0; return n }

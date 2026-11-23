@@ -130,7 +130,7 @@ function Minimap() {
                 return <rect key={r.section} x={x0} y={r.side < 0 ? 6 : MAP_H - 28} width={Math.max(4, x1 - x0 - 2)} height={22} rx={2} fill={SECTION_LABEL[r.section] === section ? '#5F4FA3' : '#FFFFFF'} />
               })
             : <>
-                {stores.map((s) => <rect key={s.id} x={lobbyX(s.z) - 8} y={s.side < 0 ? 4 : MAP_H - 22} width={16} height={18} rx={2} fill={s.id === nearStore ? '#5F4FA3' : '#FFFFFF'} />)}
+                {stores.map((s) => <rect key={s.id} x={lobbyX(s.z) - 4} y={s.side < 0 ? 4 : MAP_H - 22} width={8} height={18} rx={2} fill={s.id === nearStore ? '#5F4FA3' : '#FFFFFF'} />)}
                 <circle cx={lobbyX(L.fountain.z)} cy={lobbyY(0)} r={5} fill="#FFFFFF" />
                 <rect x={lobbyX(L.escalators.z0)} y={lobbyY(-2)} width={lobbyX(L.escalators.z1) - lobbyX(L.escalators.z0)} height={lobbyY(2) - lobbyY(-2)} rx={2} fill="#FFFFFF" opacity={0.75} />
               </>}

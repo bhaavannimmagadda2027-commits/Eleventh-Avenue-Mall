@@ -60,7 +60,7 @@ function buildArchitecture() {
     // stone cornice at the eave
     box(0.5, 0.35, LEN, white, s * (L.voidHalf + 0.1), L.eaveY - 0.1, ZC, g)
     // structural columns at the atrium edge and pilasters on the shop line
-    for (let z = 0; z >= -63; z -= L.columnStep) {
+    for (let z = 0; z >= L.endZ + L.columnStep; z -= L.columnStep) {
       box(0.6, L.eaveY, 0.6, stone, s * (L.voidHalf + 0.35), L.eaveY / 2, z, g)
       box(0.08, L.eaveY - 0.4, 0.62, oak, s * (L.voidHalf + 0.02), (L.eaveY - 0.4) / 2, z, g).userData.noCast = true
       box(0.9, L.upperY, 0.9, stone, s * (L.shopX - 0.2), L.upperY / 2, z, g)

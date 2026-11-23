@@ -6,5 +6,5 @@ export {
   Gift, HandWaving as Hand, Headphones, Heart, House as Home, Bed as Hotel, Info, Link as Link2, Lock, MapPin, Minus,
   Package as PackageCheck, Pill, Airplane as Plane, Plus, MagnifyingGlass as Search, ShieldCheck, TShirt as Shirt, ShoppingBag,
   ShoppingCart, DeviceMobile as Smartphone, Couch as Sofa, Sparkle as Sparkles, ThumbsUp, Trash as Trash2, Truck, Users, Wallet,
-  Watch, X,
+  Watch, X, Handbag, Grains, Wrench, Handshake,
 } from '@phosphor-icons/react'

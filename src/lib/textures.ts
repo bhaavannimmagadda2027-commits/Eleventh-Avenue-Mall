@@ -195,6 +195,10 @@ function goods(g: CanvasRenderingContext2D, st: Store, x: number, y: number, w: 
     watches: ['#E6D7B5', '#2B2A28', '#C9CBCC'],
     health: ['#FFFFFF', '#E8604C', '#9DC3B5', '#F2F2F2'],
     dining: ['#F3E6D2', '#00704A', '#7A4A2A', '#FFFFFF'],
+    accessories: ['#9A5B35', '#2F2A33', '#C9A679', '#7A2E3A', '#E9D2AE'],
+    staples: ['#F2E2B8', '#E8B32A', '#B5381F', '#8A5A32', '#F4EEDF'],
+    supplies: ['#F2B705', '#3A3D45', '#C9CBCC', '#5E8F3E'],
+    services: ['#E9E4DA', '#2F4A7A', '#FFFFFF', '#BFA887'],
   }
   const p = pal[cat] ?? ['#999']
   if (cat === 'fashion' || cat === 'kids') {
@@ -247,7 +251,9 @@ function goods(g: CanvasRenderingContext2D, st: Store, x: number, y: number, w: 
 
 /** Ground-floor shopfront: pale oak frame, glass windows with lit displays, open doorway. */
 export const facadeTex = (st: Store) =>
-  canvasTex('facade-' + st.id, 1024, 480, (g, w, h) => {
+  canvasTex('facade-' + st.id, 768, 360, (g) => {
+    g.scale(0.75, 0.75) // drawn at full size into a lighter texture: the mall now has many more of these
+    const w = 1024, h = 480
     g.fillStyle = '#D9C5A5'; g.fillRect(0, 0, w, h)
     const top = 18, dw = 300, dx = (w - dw) / 2
     const win = (x: number, ww: number) => {
@@ -304,7 +310,9 @@ export const bladeTex = (st: Store) =>
 
 /** Upper-floor shopfront (simpler: glazing + display). */
 export const upperFacadeTex = (st: Store | null, key: string) =>
-  canvasTex('upper-' + key, 1024, 360, (g, w, h) => {
+  canvasTex('upper-' + key, 768, 270, (g) => {
+    g.scale(0.75, 0.75)
+    const w = 1024, h = 360
     g.fillStyle = '#E9E3D8'; g.fillRect(0, 0, w, h)
     if (!st) {
       g.fillStyle = '#F7F4EE'; g.fillRect(16, 16, w - 32, h - 32)
@@ -350,6 +358,10 @@ function glyph(g: CanvasRenderingContext2D, kind: string, x: number, y: number, 
     case 'house': g.moveTo(-r * 0.6, 0); g.lineTo(0, -r * 0.6); g.lineTo(r * 0.6, 0); g.moveTo(-r * 0.45, -r * 0.1); g.lineTo(-r * 0.45, r * 0.6); g.lineTo(r * 0.45, r * 0.6); g.lineTo(r * 0.45, -r * 0.1); break
     case 'gem': g.moveTo(-r * 0.6, -r * 0.2); g.lineTo(-r * 0.3, -r * 0.55); g.lineTo(r * 0.3, -r * 0.55); g.lineTo(r * 0.6, -r * 0.2); g.lineTo(0, r * 0.65); g.closePath(); g.moveTo(-r * 0.6, -r * 0.2); g.lineTo(r * 0.6, -r * 0.2); break
     case 'clock': g.arc(0, 0, r * 0.6, 0, 7); g.moveTo(0, -r * 0.35); g.lineTo(0, 0); g.lineTo(r * 0.25, r * 0.15); break
+    case 'bag': g.moveTo(-r * 0.55, -r * 0.15); g.lineTo(r * 0.55, -r * 0.15); g.lineTo(r * 0.65, r * 0.6); g.lineTo(-r * 0.65, r * 0.6); g.closePath(); g.moveTo(-r * 0.25, -r * 0.15); g.quadraticCurveTo(0, -r * 0.9, r * 0.25, -r * 0.15); break
+    case 'grain': g.moveTo(0, r * 0.7); g.lineTo(0, -r * 0.65); for (const y of [-0.35, 0, 0.35]) { g.moveTo(0, r * (y + 0.15)); g.lineTo(-r * 0.4, r * (y - 0.15)); g.moveTo(0, r * (y + 0.15)); g.lineTo(r * 0.4, r * (y - 0.15)) } break
+    case 'tool': g.moveTo(-r * 0.55, r * 0.55); g.lineTo(r * 0.2, -r * 0.2); g.moveTo(r * 0.55, -r * 0.2); g.arc(r * 0.3, -r * 0.3, r * 0.27, 0.3, Math.PI * 1.7); break
+    case 'desk': g.moveTo(-r * 0.65, -r * 0.1); g.lineTo(r * 0.65, -r * 0.1); g.moveTo(-r * 0.5, -r * 0.1); g.lineTo(-r * 0.5, r * 0.6); g.moveTo(r * 0.5, -r * 0.1); g.lineTo(r * 0.5, r * 0.6); g.moveTo(0, -r * 0.65); g.arc(0, -r * 0.42, r * 0.22, -Math.PI / 2, Math.PI * 1.5); break
     case 'cross': g.moveTo(0, -r * 0.6); g.lineTo(0, r * 0.6); g.moveTo(-r * 0.6, 0); g.lineTo(r * 0.6, 0); break
     case 'cup': g.moveTo(-r * 0.5, -r * 0.3); g.lineTo(r * 0.4, -r * 0.3); g.lineTo(r * 0.3, r * 0.55); g.lineTo(-r * 0.4, r * 0.55); g.closePath(); g.moveTo(r * 0.4, -r * 0.15); g.arc(r * 0.5, r * 0.08, r * 0.2, -Math.PI / 2, Math.PI / 2); break
   }
@@ -365,12 +377,13 @@ export const directoryTex = (stores: Store[]) =>
     g.fillStyle = '#E2DDD3'; g.fillRect(40, 140, w - 80, 2)
     const cats = CATEGORIES.filter((c) => stores.some((s) => s.category === c.id))
     cats.forEach((c, i) => {
-      const y = 186 + i * 74
+      const step = Math.min(74, (h - 300) / cats.length)
+      const y = 178 + i * step
       const st = stores.find((s) => s.category === c.id && s.level === 0) ?? stores.find((s) => s.category === c.id)!
-      g.strokeStyle = '#7665B5'; glyph(g, CATEGORY[c.id].glyph, 62, y, 22)
-      g.fillStyle = '#262626'; g.font = F(600, 24); g.fillText(c.label, 100, y - 2)
-      g.fillStyle = '#777873'; g.font = F(400, 18)
-      g.fillText(`${st.name} · ${st.level ? 'First floor' : 'Ground floor'}`, 100, y + 24)
+      g.strokeStyle = '#7665B5'; glyph(g, CATEGORY[c.id].glyph, 62, y, 18)
+      g.fillStyle = '#262626'; g.font = F(600, 21); g.fillText(c.label, 100, y - 3)
+      g.fillStyle = '#777873'; g.font = F(400, 16)
+      g.fillText(`${st.name} · ${st.level ? 'First floor' : 'Ground floor'}`, 100, y + 17)
     })
     g.fillStyle = '#EAE5F6'; rr(g, 40, h - 96, w - 80, 56, 28); g.fill()
     g.fillStyle = '#7665B5'; g.beginPath(); g.arc(72, h - 68, 8, 0, 7); g.fill()
