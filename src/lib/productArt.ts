@@ -103,47 +103,154 @@ function categoryOf(p: Product) {
   return p.storeId === 'palette' ? 'beauty' : p.storeId === 'croma' ? 'tech' : p.storeId === 'zudio' ? 'apparel' : p.storeId === 'westside-home' ? 'home' : 'food'
 }
 
-/** Front-of-pack label: pack colour, brand pill, illustration, product name, size and the green veg mark. */
-export function labelTex(p: Product, w = 512, h = 512) {
-  return canvasTex(`label-${p.id}-${w}x${h}`, w, h, (g) => {
-    const [bg, accent] = p.colors
-    g.fillStyle = bg; g.fillRect(0, 0, w, h)
-    const u = Math.min(w, h) / 512
-    // brand pill
-    g.font = F(700, 26 * u)
-    const bw = g.measureText(p.brand.toUpperCase()).width + 34 * u
-    g.fillStyle = accent; rr(g, w / 2 - bw / 2, 22 * u, bw, 44 * u, 22 * u); g.fill()
-    g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.brand.toUpperCase(), w / 2, 45 * u)
-    // illustration
-    art(g, p.art, w / 2, h * 0.47, Math.min(w, h) * 0.2, p)
-    // name
-    const dark = new THREE.Color(bg).getHSL({ h: 0, s: 0, l: 0 }).l > 0.55
-    g.fillStyle = dark ? '#262626' : '#FFFFFF'
-    let fs = 50 * u
-    const name = p.name.split(',')[0]
-    g.font = F(700, fs)
-    while (g.measureText(name).width > w * 0.88 && fs > 22 * u) { fs -= 2; g.font = F(700, fs) }
-    g.fillText(name, w / 2, h * 0.76)
-    g.font = F(500, 28 * u); g.globalAlpha = 0.8; g.fillText(p.size, w / 2, h * 0.87); g.globalAlpha = 1
-    // veg mark (food only)
-    if (!['beauty', 'tech', 'apparel', 'home'].includes(categoryOf(p))) {
-    g.strokeStyle = '#2E8B3E'; g.lineWidth = 3 * u; g.strokeRect(w - 54 * u, h - 54 * u, 32 * u, 32 * u)
-    g.fillStyle = '#2E8B3E'; g.beginPath(); g.arc(w - 38 * u, h - 38 * u, 9 * u, 0, 7); g.fill()
+const seedOf = (t: string) => { let n = 7; for (let i = 0; i < t.length; i++) n = (n * 31 + t.charCodeAt(i)) >>> 0; return n }
+const lumOf = (hex: string) => new THREE.Color(hex).getHSL({ h: 0, s: 0, l: 0 }).l
+const tint = (hex: string, dl: number) => '#' + new THREE.Color(hex).offsetHSL(0, 0, dl).getHexString()
+const WRAPPED = new Set(['bottle', 'jar', 'tub', 'tube', 'dropper'])
+
+type PackStyle = 'clean' | 'burst' | 'wave' | 'heritage' | 'window' | 'slash' | 'arch'
+function packStyle(p: Product): PackStyle {
+  if (categoryOf(p) === 'beauty') return 'clean'
+  if (p.art === 'tea' || p.art === 'coffee') return 'heritage'
+  if (WRAPPED.has(p.shape)) return 'window'
+  if (p.shape === 'pillow') return p.art === 'chips' || p.art === 'chilli' ? 'burst' : 'arch'
+  if (p.shape === 'tetra') return 'wave'
+  return (['window', 'slash', 'arch'] as const)[seedOf(p.brand) % 3]
+}
+
+/** Fits text to a width, breaking onto a second line before it gets too small to read. */
+function fitText(g: CanvasRenderingContext2D, text: string, cx: number, cy: number, maxW: number, weight: number, size: number, min: number) {
+  let fs = size
+  g.font = F(weight, fs)
+  while (g.measureText(text).width > maxW && fs > min * 1.5) { fs -= 2; g.font = F(weight, fs) }
+  const words = text.split(' ')
+  if (g.measureText(text).width > maxW && words.length > 1) {
+    const cut = Math.ceil(words.length / 2), lines = [words.slice(0, cut).join(' '), words.slice(cut).join(' ')]
+    while (lines.some((l) => g.measureText(l).width > maxW) && fs > min) { fs -= 2; g.font = F(weight, fs) }
+    g.fillText(lines[0], cx, cy - fs * 0.56); g.fillText(lines[1], cx, cy + fs * 0.56)
+    return
+  }
+  while (g.measureText(text).width > maxW && fs > min) { fs -= 2; g.font = F(weight, fs) }
+  g.fillText(text, cx, cy)
+}
+
+/** Front of pack. Each kind of product gets its own layout, so a shelf reads as different brands. */
+function paintPack(g: CanvasRenderingContext2D, p: Product, w: number, h: number) {
+  const [bg, accent] = p.colors
+  const u = Math.min(w, h) / 512, style = packStyle(p), cat = categoryOf(p)
+  const ink = lumOf(bg) > 0.56 ? '#211F1B' : '#FFFFFF'
+  const onAccent = lumOf(accent) > 0.56 ? '#211F1B' : '#FFFFFF'
+  const panel = lumOf(bg) > 0.56 ? tint(bg, -0.07) : tint(bg, 0.09)
+  g.fillStyle = bg; g.fillRect(0, 0, w, h)
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  let artY = h * 0.48, artR = Math.min(w, h) * 0.25, nameInk = ink, sizeInk = ink
+  switch (style) {
+    case 'burst': {
+      g.save(); g.translate(w / 2, h * 0.47); g.fillStyle = panel
+      const reach = Math.hypot(w, h)
+      for (let i = 0; i < 16; i++) { g.rotate(Math.PI / 8); g.beginPath(); g.moveTo(0, 0); g.lineTo(reach, -reach * 0.1); g.lineTo(reach, reach * 0.1); g.fill() }
+      g.restore()
+      g.fillStyle = accent; g.beginPath(); g.moveTo(0, h * 0.72); g.quadraticCurveTo(w / 2, h * 0.64, w, h * 0.72); g.lineTo(w, h); g.lineTo(0, h); g.fill()
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(w / 2, artY, artR * 1.18, 0, 7); g.fill()
+      nameInk = onAccent; sizeInk = onAccent
+      break
     }
+    case 'wave': {
+      g.fillStyle = accent; g.beginPath(); g.moveTo(0, h * 0.6)
+      g.bezierCurveTo(w * 0.3, h * 0.5, w * 0.62, h * 0.72, w, h * 0.57); g.lineTo(w, h); g.lineTo(0, h); g.fill()
+      g.fillStyle = tint(accent, 0.12); g.beginPath(); g.moveTo(0, h * 0.68)
+      g.bezierCurveTo(w * 0.35, h * 0.6, w * 0.65, h * 0.78, w, h * 0.65); g.lineTo(w, h); g.lineTo(0, h); g.fill()
+      artY = h * 0.39; nameInk = onAccent; sizeInk = onAccent
+      break
+    }
+    case 'heritage': {
+      g.strokeStyle = accent; g.lineWidth = 7 * u; g.strokeRect(16 * u, 16 * u, w - 32 * u, h - 32 * u)
+      g.lineWidth = 2 * u; g.strokeRect(29 * u, 29 * u, w - 58 * u, h - 58 * u)
+      g.fillStyle = accent; g.fillRect(29 * u, h * 0.68, w - 58 * u, h * 0.15)
+      artY = h * 0.45; artR *= 0.92; nameInk = onAccent
+      g.strokeStyle = accent; g.lineWidth = 3 * u; g.beginPath(); g.arc(w / 2, artY, artR * 1.22, 0, 7); g.stroke()
+      break
+    }
+    case 'slash': {
+      g.fillStyle = accent; g.beginPath(); g.moveTo(0, h * 0.5); g.lineTo(w, h * 0.34); g.lineTo(w, h); g.lineTo(0, h); g.fill()
+      g.fillStyle = panel; g.beginPath(); g.moveTo(0, h * 0.46); g.lineTo(w, h * 0.3); g.lineTo(w, h * 0.34); g.lineTo(0, h * 0.5); g.fill()
+      artY = h * 0.5; nameInk = onAccent; sizeInk = onAccent
+      break
+    }
+    case 'arch': {
+      g.fillStyle = panel; g.beginPath(); g.moveTo(w * 0.1, h); g.lineTo(w * 0.1, h * 0.46)
+      g.arc(w / 2, h * 0.46, w * 0.4, Math.PI, 0); g.lineTo(w * 0.9, h); g.fill()
+      g.fillStyle = accent; g.fillRect(0, h * 0.7, w, h * 0.17)
+      nameInk = onAccent
+      break
+    }
+    case 'window': {
+      g.fillStyle = accent; g.fillRect(0, 0, w, h * 0.055); g.fillRect(0, h * 0.945, w, h * 0.055)
+      g.fillStyle = panel; g.beginPath(); g.arc(w / 2, artY, artR * 1.26, 0, 7); g.fill()
+      g.strokeStyle = accent; g.lineWidth = 5 * u; g.stroke()
+      break
+    }
+    case 'clean': {
+      g.strokeStyle = ink; g.globalAlpha = 0.45; g.lineWidth = 2 * u
+      g.beginPath(); g.moveTo(w * 0.2, h * 0.27); g.lineTo(w * 0.8, h * 0.27); g.moveTo(w * 0.2, h * 0.68); g.lineTo(w * 0.8, h * 0.68); g.stroke()
+      g.globalAlpha = 1; artR *= 0.62
+      break
+    }
+  }
+  // brand wordmark: text only, and the biggest thing on the pack
+  g.fillStyle = ink
+  const brand = style === 'heritage' || style === 'clean' ? p.brand.toUpperCase() : p.brand
+  fitText(g, brand, w / 2, style === 'clean' ? h * 0.17 : h * 0.14, w * (style === 'heritage' ? 0.76 : 0.86), style === 'clean' ? 500 : 700, 76 * u, 24 * u)
+  art(g, p.art, w / 2, artY, artR, p)
+  g.fillStyle = nameInk
+  fitText(g, p.name.split(',')[0], w / 2, style === 'clean' ? h * 0.76 : h * 0.775, w * 0.84, style === 'clean' ? 500 : 700, 52 * u, 24 * u)
+  g.fillStyle = sizeInk; g.globalAlpha = 0.86
+  g.font = F(500, 28 * u); g.fillText(p.size, w / 2, style === 'clean' ? h * 0.86 : h * 0.895); g.globalAlpha = 1
+  if (cat === 'food') {
+    const b = 36 * u, x = w - b - 20 * u, y = 74 * u + h * 0.1
+    g.fillStyle = '#FFFFFF'; g.fillRect(x, y, b, b)
+    g.strokeStyle = '#2E8B3E'; g.lineWidth = 3 * u; g.strokeRect(x + 2 * u, y + 2 * u, b - 4 * u, b - 4 * u)
+    g.fillStyle = '#2E8B3E'; g.beginPath(); g.arc(x + b / 2, y + b / 2, 9 * u, 0, 7); g.fill()
+  }
+  // soft printed sheen, so a flat face does not read as a sticker
+  const sheen = g.createLinearGradient(0, 0, w, 0)
+  sheen.addColorStop(0, 'rgba(0,0,0,.14)'); sheen.addColorStop(0.28, 'rgba(255,255,255,.1)'); sheen.addColorStop(0.62, 'rgba(255,255,255,0)'); sheen.addColorStop(1, 'rgba(0,0,0,.16)')
+  g.fillStyle = sheen; g.fillRect(0, 0, w, h)
+}
+
+/** Front-of-pack label, capped in size because tall packs would otherwise use very large textures. */
+export function labelTex(p: Product, w = 512, h = 512) {
+  const k = Math.min(1, 720 / Math.max(w, h)), tw = Math.round(w * k), th = Math.round(h * k)
+  return canvasTex(`label-${p.id}-${tw}x${th}`, tw, th, (g) => paintPack(g, p, tw, th))
+}
+
+/** Pack side: brand running up the panel, with a pale information block and barcode. */
+function sideTex(p: Product) {
+  return canvasTex(`side-${p.id}`, 128, 384, (g, w, h) => {
+    const [bg, accent] = p.colors
+    g.fillStyle = accent; g.fillRect(0, 0, w, h)
+    g.fillStyle = bg; g.fillRect(0, 0, w, 14); g.fillRect(0, h - 14, w, 14)
+    g.save(); g.translate(w / 2, h * 0.36); g.rotate(-Math.PI / 2)
+    g.fillStyle = lumOf(accent) > 0.56 ? '#211F1B' : '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let fs = 46; g.font = F(700, fs)
+    while (g.measureText(p.brand).width > h * 0.58 && fs > 18) { fs -= 2; g.font = F(700, fs) }
+    g.fillText(p.brand, 0, 0); g.restore()
+    g.fillStyle = '#FFFFFF'; g.fillRect(18, h * 0.72, w - 36, h * 0.2)
+    g.fillStyle = '#211F1B'
+    const R = rng(seedOf(p.id))
+    for (let x = 25; x < w - 25;) { const b = 1 + Math.floor(R() * 3); g.fillRect(x, h * 0.745, b, h * 0.15); x += b + 1 + Math.floor(R() * 3) }
   })
 }
 
-/** Wrap-around label for bottles, tubs and jars: front art centred, plain band behind. */
+/** Wrap-around label for bottles, tubs and jars: the front art centred on a seamless band. */
 function wrapTex(p: Product, aspect: number) {
   const h = 256, w = Math.min(2048, Math.round(h * aspect))
   return canvasTex(`wrap-${p.id}`, w, h, (g) => {
-    const [, accent] = p.colors
-    g.fillStyle = p.shape === 'bottle' && p.art === 'cow' ? '#FFFFFF' : accent
-    g.fillRect(0, 0, w, h)
-    g.fillStyle = accent; g.fillRect(0, 0, w, 16); g.fillRect(0, h - 16, w, 16)
+    const [bg, accent] = p.colors
+    g.fillStyle = bg; g.fillRect(0, 0, w, h)
+    g.fillStyle = accent; g.fillRect(0, 0, w, 14); g.fillRect(0, h - 14, w, 14)
     const fw = h * 1.1, fx = w / 2 - fw / 2
-    const front = labelTex(p, 512, 512).image as HTMLCanvasElement
-    g.drawImage(front, fx, 0, fw, h)
+    g.drawImage(labelTex(p, 512, 512).image as HTMLCanvasElement, fx, 0, fw, h)
   })
 }
 
@@ -381,6 +488,31 @@ function bottleGeo(r: number, h: number, seg = 20) {
   return new THREE.LatheGeometry(pts, seg)
 }
 
+/** A sealed snack or grocery pouch: puffed body, crimped seals top and bottom, soft creases that catch the light. */
+function pouchGeo(w: number, h: number, d: number, lite = false) {
+  const g = new THREE.BoxGeometry(w, h, d, lite ? 4 : 10, lite ? 5 : 14, 1)
+  const pos = g.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const nx = (2 * x) / w, ny = (2 * y) / h, fx = 1 - nx * nx, fy = 1 - Math.pow(ny, 4)
+    const k = 0.16 + 0.84 * Math.sqrt(Math.max(0, fx * fy)), seal = Math.abs(ny) > 0.88
+    const crease = seal ? Math.sin(nx * 26) * d * 0.02 : Math.sin(nx * 7 + ny * 3) * Math.cos(ny * 9) * d * 0.035 * k
+    pos.setXYZ(i, x * (1 - 0.05 * (1 - fy)), y, z * (seal ? 0.1 : k) + crease)
+  }
+  g.computeVertexNormals()
+  return g.translate(0, h / 2, 0)
+}
+
+/** Turned container from a [radius, height] profile, both as fractions of the pack. */
+const turned = (pts: number[][], r: number, h: number, seg: number, lite = false) =>
+  new THREE.LatheGeometry(pts.filter((_, i) => !lite || i % 2 === 0 || i === pts.length - 1).map(([a, b]) => new THREE.Vector2(a * r, b * h)), lite ? Math.min(seg, 8) : seg)
+const BOTTLES = {
+  oil: [[0, 0], [0.82, 0], [0.94, 0.015], [1, 0.05], [0.94, 0.09], [1, 0.13], [1, 0.54], [0.93, 0.6], [0.78, 0.67], [0.86, 0.72], [0.62, 0.8], [0.4, 0.87], [0.38, 0.92], [0, 0.92]],
+  soda: [[0, 0.01], [0.6, 0], [0.92, 0.02], [0.82, 0.05], [1, 0.1], [1, 0.54], [0.86, 0.62], [0.62, 0.72], [0.44, 0.82], [0.36, 0.89], [0.36, 0.92], [0, 0.92]],
+  plain: [[0, 0], [0.9, 0], [1, 0.04], [1, 0.56], [0.9, 0.66], [0.62, 0.78], [0.42, 0.87], [0.4, 0.92], [0, 0.92]],
+}
+const JAR = [[0, 0], [0.9, 0], [1, 0.035], [1, 0.72], [0.92, 0.79], [0.72, 0.83], [0.7, 0.87], [0, 0.87]]
+
 function loafGeo(w: number, h: number, len: number) {
   const s = new THREE.Shape()
   s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(w / 2, h * 0.55)
@@ -430,35 +562,57 @@ export function productParts(p: Product): Part[] {
   if (isProduce(p)) parts = [{ geo: produceGeo(p), mat: produceMat }]
   else if (SOLID.has(p.shape)) parts = [{ geo: solidGeo(p), mat: solidMat }]
   else if (extra) parts = extra
-  else if (p.shape === 'box' || p.shape === 'tetra' || p.shape === 'block' || p.shape === 'eggs') {
+  else if (p.shape === 'tetra') {
+    // a gable-top carton with a folded ridge and a screw cap
+    const bodyH = h * 0.82
+    const body = new THREE.BoxGeometry(w, bodyH, d).translate(0, bodyH / 2, 0)
+    const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * bodyH) / w)), roughness: 0.34 })
+    const sideM = new THREE.MeshStandardMaterial({ map: sideTex(p), roughness: 0.4 })
+    const gable = reshape(new THREE.BoxGeometry(w, h * 0.13, d).toNonIndexed(), (v) => { if (v.y > 0) v.z *= 0.1 }).translate(0, bodyH + h * 0.065, 0)
+    const fin = new THREE.BoxGeometry(w, h * 0.05, d * 0.12).translate(0, bodyH + h * 0.155, 0)
+    const cap = new THREE.CylinderGeometry(w * 0.16, w * 0.16, h * 0.035, lite ? 6 : 12).rotateX(0.9).translate(0, bodyH + h * 0.085, d * 0.26)
+    parts = [
+      compact(body, [sideM, sideM, side, side, front, side]),
+      { geo: merge([gable, fin]), mat: new THREE.MeshStandardMaterial({ color: col, roughness: 0.38 }) },
+      { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.32 }) },
+    ]
+  } else if (p.shape === 'box' || p.shape === 'block' || p.shape === 'eggs') {
     const geo = new THREE.BoxGeometry(w, h, d).translate(0, h / 2, 0)
-    const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * h) / w)), roughness: p.shape === 'tetra' ? 0.35 : 0.5 })
+    const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * h) / w)), roughness: 0.42 })
     const topMap = p.shape === 'eggs' || p.shape === 'block'
       ? new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * d) / w)), roughness: 0.5 })
       : new THREE.MeshStandardMaterial({ color: new THREE.Color(col).offsetHSL(0, 0, -0.04), roughness: 0.5 })
-    const sideAcc = new THREE.MeshStandardMaterial({ color: accent, roughness: 0.5 })
+    const sideM = new THREE.MeshStandardMaterial({ map: sideTex(p), roughness: 0.46 })
     const mats = p.shape === 'block' || p.shape === 'eggs'
       ? [side, side, topMap, side, side, side]
-      : [sideAcc, sideAcc, topMap, side, front, side]
+      : [sideM, sideM, topMap, side, front, side]
     parts = [compact(geo, mats)]
   } else if (p.shape === 'pillow') {
-    const geo = pillowGeo(w, h, d, lite)
-    const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * h) / w)), roughness: 0.32, metalness: 0.15 })
+    const geo = pouchGeo(w, h, d, lite)
+    const front = new THREE.MeshStandardMaterial({ map: labelTex(p, 512, Math.round((512 * h) / w)), roughness: 0.3, metalness: 0.16 })
     parts = [compact(geo, [side, side, side, side, front, side])]
   } else if (p.shape === 'bottle') {
     const r = w / 2
-    const body = new THREE.MeshStandardMaterial({ color: p.art === 'oil' ? '#F6E08A' : '#FAFAF7', roughness: 0.25, transparent: p.art === 'oil', opacity: p.art === 'oil' ? 0.85 : 1 })
-    const labelGeo = new THREE.CylinderGeometry(r * 1.01, r * 1.01, h * 0.38, seg, 1, true, Math.PI, Math.PI * 2).translate(0, h * 0.34, 0)
-    const label = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.38)), roughness: 0.4 })
-    const cap = new THREE.CylinderGeometry(r * 0.42, r * 0.42, h * 0.09, seg).translate(0, h * 0.955, 0)
-    parts = [{ geo: bottleGeo(r, h, seg), mat: body }, { geo: labelGeo, mat: label }, { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.4 }) }]
-  } else if (p.shape === 'tub' || p.shape === 'jar') {
+    const kind = p.art === 'oil' ? 'oil' : /soda|cola|fizz/i.test(p.name) ? 'soda' : 'plain'
+    const body = new THREE.MeshStandardMaterial({ color: p.art === 'oil' ? '#E3AE33' : p.art === 'cow' ? '#FAFAF7' : col, roughness: 0.18, metalness: 0.02 })
+    const labelGeo = new THREE.CylinderGeometry(r * 1.012, r * 1.012, h * 0.38, seg, 1, true, Math.PI, Math.PI * 2).translate(0, h * 0.34, 0)
+    const label = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.38)), roughness: 0.36 })
+    const cap = new THREE.CylinderGeometry(r * 0.44, r * 0.46, h * 0.09, seg).translate(0, h * 0.955, 0)
+    parts = [{ geo: turned(BOTTLES[kind], r, h, seg, lite), mat: body }, { geo: labelGeo, mat: label }, { geo: cap, mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.34 }) }]
+  } else if (p.shape === 'jar') {
     const r = w / 2
-    const tub = p.shape === 'tub'
-    const bodyGeo = new THREE.CylinderGeometry(r, tub ? r * 0.82 : r, h * 0.84, seg, 1, false, Math.PI, Math.PI * 2).translate(0, h * 0.42, 0)
-    const wrap = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.84)), roughness: tub ? 0.4 : 0.2 })
-    const lidGeo = new THREE.CylinderGeometry(r * (tub ? 1.04 : 0.92), r * (tub ? 1.04 : 0.92), h * 0.16, seg).translate(0, h * 0.92, 0)
-    parts = [{ geo: bodyGeo, mat: [wrap, side, side] }, { geo: lidGeo, mat: new THREE.MeshStandardMaterial({ color: tub ? accent : '#E8B84A', roughness: 0.35, metalness: tub ? 0 : 0.4 }) }]
+    const glass = new THREE.MeshStandardMaterial({ color: col, roughness: 0.12, metalness: 0.04 })
+    const labelGeo = new THREE.CylinderGeometry(r * 1.012, r * 1.012, h * 0.48, seg, 1, true, Math.PI, Math.PI * 2).translate(0, h * 0.36, 0)
+    const label = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.48)), roughness: 0.34 })
+    const lid = new THREE.CylinderGeometry(r * 0.84, r * 0.86, h * 0.13, seg).translate(0, h * 0.935, 0)
+    parts = [{ geo: turned(JAR, r, h, seg, lite), mat: glass }, { geo: labelGeo, mat: label }, { geo: lid, mat: new THREE.MeshStandardMaterial({ color: '#D9AE4F', roughness: 0.28, metalness: 0.62 }) }]
+  } else if (p.shape === 'tub') {
+    const r = w / 2
+    const bodyGeo = new THREE.CylinderGeometry(r, r * 0.82, h * 0.86, seg, 1, false, Math.PI, Math.PI * 2).translate(0, h * 0.43, 0)
+    const wrap = new THREE.MeshStandardMaterial({ map: wrapTex(p, (2 * Math.PI * r) / (h * 0.86)), roughness: 0.38 })
+    const rim = new THREE.CylinderGeometry(r * 1.05, r * 1.05, h * 0.05, seg).translate(0, h * 0.875, 0)
+    const lid = new THREE.CylinderGeometry(r * 0.96, r * 1.0, h * 0.1, seg).translate(0, h * 0.95, 0)
+    parts = [{ geo: bodyGeo, mat: [wrap, side, side] }, { geo: merge([rim, lid]), mat: new THREE.MeshStandardMaterial({ color: accent, roughness: 0.3 }) }]
   } else if (p.shape === 'loaf') {
     const geo = loafGeo(w, h, d)
     const crust = new THREE.MeshStandardMaterial({ color: col, roughness: 0.75 })

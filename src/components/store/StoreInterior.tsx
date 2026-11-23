@@ -107,29 +107,32 @@ const fitScale = (p: Product, room: number, max = 1.3) => Math.min(max, room / u
  * Background stock for a shelf: runs of made-up packs, two to five facings each, packed edge to edge
  * and two or three deep, with the odd facing pulled back or sold through. Each run gets its own price tag.
  */
-type MixOpts = { frame?: THREE.Matrix4; max?: number; gap?: number; rows?: number; tags?: boolean; block?: [number, number] }
+type MixOpts = { frame?: THREE.Matrix4; max?: number; gap?: number; rows?: number; tags?: boolean; block?: [number, number]; span?: [number, number]; plan?: number }
 
 function fillMixed(c: Ctx, bay: THREE.Group, pool: Product[], owner: string, W: number, y: number, room: number, front: number, tagY: number, o: MixOpts = {}) {
   const { frame = c.frame, max = 1.08, gap = 0.005, tags = true, block = [2, 5] } = o
   const fits = pool.filter((q) => (room - 0.02) / unitSize(q)[1] >= 0.62)
   if (!fits.length) return
-  const end = W / 2 - 0.03
-  let x = -W / 2 + 0.03
+  const [from, to] = o.span ?? [-W / 2 + 0.03, W / 2 - 0.03]
+  const end = to
+  let x = from
   let last = -1
+  // the same plan on every shelf of a bay lines each brand up into a vertical block
+  const pickR = o.plan != null ? rng(o.plan) : c.R
   while (x < end - 0.06) {
-    let k = Math.floor(c.R() * fits.length)
+    let k = Math.floor(pickR() * fits.length)
     if (k === last && fits.length > 1) k = (k + 1) % fits.length
     last = k
     const q = fits[k]
     const [w, h, d] = unitSize(q)
     const s = Math.min(max, (room - 0.02) / h)
     const step = w * s + gap
-    const n = Math.min(Math.floor((end - x) / step), block[0] + Math.floor(c.R() * (block[1] - block[0] + 1)))
+    const n = Math.min(Math.floor((end - x) / step), block[0] + Math.floor(pickR() * (block[1] - block[0] + 1)))
     if (n < 1) break
     const folded = q.shape === 'folded'
     const stackable = (['box', 'jar', 'tub', 'tetra', 'block'].includes(q.shape) && h * s < 0.17) || folded
     const tiers = stackable ? Math.max(1, Math.min(folded ? 6 : 3, Math.floor((room - 0.02) / (h * s)))) : 1
-    const rows = o.rows ?? (d * s < 0.085 ? 3 : 2)
+    const rows = o.rows ?? 2 // only the front faces and a sliver of the next row can be seen from the aisle
     const inst = instOf(c.insts, q)
     for (let i = 0; i < n; i++)
       for (let r = 0; r < rows; r++) {
@@ -148,7 +151,7 @@ function fillMixed(c: Ctx, bay: THREE.Group, pool: Product[], owner: string, W: 
       }
     if (tags) {
       const t = plane(0.15, 0.06, tagMat(q), bay)
-      t.position.set(Math.max(-W / 2 + 0.09, Math.min(W / 2 - 0.09, x + (n * step) / 2)), tagY, front + 0.032)
+      t.position.set(Math.max(from + 0.07, Math.min(to - 0.07, x + (n * step) / 2)), tagY, front + 0.032)
     }
     x += n * step + Math.max(0.008, gap)
   }
@@ -158,7 +161,18 @@ function fillMixed(c: Ctx, bay: THREE.Group, pool: Product[], owner: string, W: 
 const stacks = (p: Product, s: number, room: number) =>
   ['box', 'block', 'eggs', 'tub', 'jar', 'tetra'].includes(p.shape) ? Math.max(1, Math.min(4, Math.floor((room - 0.02) / (unitSize(p)[1] * s)))) : 1
 
-const SHELF_EDGE = () => mat('#F7F6F2', { roughness: 0.4 })
+const SHELF_EDGE = () => mat('#D9C5A5', { roughness: 0.42 })
+const planOf = (t: string) => { let n = 11; for (let i = 0; i < t.length; i++) n = (n * 33 + t.charCodeAt(i)) >>> 0; return n }
+
+/** A small card on the shelf edge, shown only for a real catalogue offer. */
+const talkerTex = (p: Product) =>
+  canvasTex(`talker-${p.id}`, 320, 112, (g, w, h) => {
+    g.fillStyle = '#7665B5'; g.fillRect(0, 0, w, h)
+    g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'
+    let fs = 44; g.font = F(600, fs)
+    while (g.measureText(p.offer ?? '').width > w - 28 && fs > 20) { fs -= 2; g.font = F(600, fs) }
+    g.fillText(p.offer ?? '', w / 2, h / 2 + 2)
+  })
 const GONDOLA_BACK = () => mat('#EFE7DA', { roughness: 0.62 })
 const GONDOLA_METAL = () => mat('#D8CDBB', { roughness: 0.34, metalness: 0.28 })
 
@@ -176,19 +190,30 @@ function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
   const hero = bulk ? [1, 2] : [2, 3]
   const pool = fillerFor(run.section)
   const front = D / 2 - 0.06
+  // planogram: brand columns either side, with the featured product in the middle at eye level
+  const heroW = pool.length ? W * 0.46 : W
+  const plan = planOf(p.id)
   levels.forEach((y, k) => {
     const room = Math.min(bulk ? 0.5 : 0.4, (levels[k + 1] ?? top) - y - 0.04)
     if (y > 0.2) box(W - 0.02, 0.022, D - 0.1, M.white(), 0, y - 0.011, -0.01, bay)
     box(W - 0.02, 0.05, 0.014, SHELF_EDGE(), 0, y - 0.03, front + 0.03, bay)
     if (y > 0.2) box(W - 0.06, 0.006, 0.01, LED, 0, y - 0.026, front - 0.02, bay)
+    if (pool.length) {
+      fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03, { span: [-W / 2 + 0.03, -heroW / 2], plan: plan + 1 })
+      fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03, { span: [heroW / 2, W / 2 - 0.03], plan: plan + 2 })
+    }
     if (hero.includes(k) || !pool.length) {
       tag(bay, p, 0, y - 0.03, front + 0.04)
+      if (p.offer && k === hero[0]) {
+        const t = plane(0.2, 0.07, basic(talkerTex(p)), bay)
+        t.position.set(heroW / 2 - 0.12, y - 0.03, front + 0.044)
+      }
       const s = fitScale(p, room - 0.02)
       const [w, , d] = unitSize(p)
-      const rows = d * s < 0.09 ? [0, 1, 2] : [0, 1]
+      const rows = [0, 1]
       for (let t = 0; t < stacks(p, s, room); t++)
-        fillShelf(c.insts, p, W - 0.04, y + t * unitSize(p)[1] * s, rows.map((r) => front - (d * s) / 2 - r * d * s * 1.03), 1, c.frame, c.R, s, Math.max(0.004, 0.02 - w * 0.05))
-    } else fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03)
+        fillShelf(c.insts, p, heroW, y + t * unitSize(p)[1] * s, rows.map((r) => front - (d * s) / 2 - r * d * s * 1.03), 1, c.frame, c.R, s, Math.max(0.004, 0.02 - w * 0.05))
+    } else fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03, { span: [-heroW / 2 + 0.01, heroW / 2 - 0.01], plan: plan + 3 })
   })
 }
 
@@ -213,8 +238,8 @@ function chillerBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx, last:
       const s = fitScale(p, room - 0.02)
       const d = unitSize(p)[2] * s
       for (let t = 0; t < stacks(p, s, room); t++)
-        fillShelf(c.insts, p, W - 0.1, y + t * unitSize(p)[1] * s, [front - d / 2, front - d * 1.53, front - d * 2.56], 1, c.frame, c.R, s, 0.006)
-    } else fillMixed(c, bay, pool, p.id, W - 0.06, y, room, front, y - 0.02)
+        fillShelf(c.insts, p, W - 0.1, y + t * unitSize(p)[1] * s, [front - d / 2, front - d * 1.53], 1, c.frame, c.R, s, 0.006)
+    } else fillMixed(c, bay, pool, p.id, W - 0.06, y, room, front, y - 0.02, { plan: planOf(p.id) })
   })
   const door = plane(W - 0.06, 2.0, M.glass(), bay)
   door.position.set(0, 1.28, D / 2 - 0.01)
