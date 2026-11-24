@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { MALLS, type Mall } from '../data/malls'
 import { PRODUCT_BY_ID } from '../data/products'
-import { HALL_IDS } from '../data/storeLayout'
+import { HALL_IDS, PLACE } from '../data/storeLayout'
 import { computeBill } from '../lib/cartMath'
 import { REDEMPTIONS, SEED_ACTIVITY, type Activity } from '../data/rewards'
 import { FRIEND_BY_ID, SEED_FAMILY_CART, SEED_PRESENCE, type Presence, type Reaction } from '../data/social'
@@ -27,6 +27,7 @@ export type Panel =
   | { kind: 'assistant'; listen?: boolean }
   | { kind: 'notifications' }
   | { kind: 'offers' }
+  | { kind: 'map'; storeId?: string }
 
 /** `by`: who added it ('you' or a friend id); only used in the family cart */
 export type CartLine = { productId: string; qty: number; price: number; storeId: string; by?: string }
@@ -73,6 +74,9 @@ type MallState = {
   /** products on the shelves just ahead of the cart (inside a store) */
   nearProducts: string[]
   storeSection: string
+  /** explore: NEU CART drives you everywhere. quick: jump straight to the store or shelf */
+  mode: 'explore' | 'quick'
+  setMode: (m: 'explore' | 'quick') => void
   coins: number
   cart: CartLine[]
   adTaps: Record<string, number>
@@ -157,6 +161,8 @@ export const useMall = create<MallState>((set, get) => ({
   thumbsReady: false,
   nearProducts: [],
   storeSection: 'Entrance',
+  mode: 'explore',
+  setMode: (mode) => set({ mode }),
   coins: 3240,
   cart: [],
   adTaps: {},
@@ -313,6 +319,12 @@ export const useMall = create<MallState>((set, get) => ({
   close: () => set({ panel: null }),
   travelTo: (storeId, enter = false) => {
     const s = get()
+    // quick mode: skip the drive and walk straight into stores that have an interior
+    if (s.mode === 'quick' && INTERIORS.includes(storeId) && s.location !== storeId) {
+      set({ panel: null, preview: null, travel: null })
+      s.enterStore(storeId)
+      return
+    }
     if (s.location !== 'lobby') {
       set({ panel: null, preview: null })
       // store to store: another section of the same mall, so go straight there
@@ -338,7 +350,10 @@ export const useMall = create<MallState>((set, get) => ({
   showPreview: (id, from = null) => set({ preview: id ? { id, from } : null }),
   seekProduct: (id, then) => {
     const p = PRODUCT_BY_ID[id]
-    const go = () => set((st) => ({ seek: { productId: id, nonce: (st.seek?.nonce ?? 0) + 1, then } }))
+    const quick = get().mode === 'quick' && then === 'preview'
+    const go = quick
+      ? () => { const pl = PLACE[id]; get().showPreview(id, pl ? [pl.x, 1.1, pl.z] : null) }
+      : () => set((st) => ({ seek: { productId: id, nonce: (st.seek?.nonce ?? 0) + 1, then } }))
     set({ panel: null, preview: null })
     if (get().view !== 'mall') set({ view: 'mall' })
     if (get().location === p.storeId) go()

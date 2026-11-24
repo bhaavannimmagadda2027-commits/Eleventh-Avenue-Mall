@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { ArrowRight, Check, Info, MapPin, Search } from '../ui/icons'
 import { PRODUCTS, PRODUCT_BY_ID, alternatives } from '../../data/products'
 import { STORE_BY_ID } from '../../data/stores'
-import { PLACE } from '../../data/storeLayout'
+import { HALLS, PLACE } from '../../data/storeLayout'
+import { MallMap } from '../navigation/MallMap'
 import { thumb } from '../../lib/productArt'
 import { Price, QtyControl } from '../products/ProductPreview'
 import { RewardsWallet } from '../rewards/RewardsWallet'
@@ -68,6 +69,16 @@ function SearchPanel() {
     [mall, t],
   )
   const products = useMemo(() => (t ? PRODUCTS.filter((p) => PLACE[p.id] && `${p.name} ${p.brand} ${p.section} ${p.desc}`.toLowerCase().includes(t)).slice(0, 8) : []), [t])
+  const brands = useMemo(() => {
+    if (!t) return []
+    const seen = new Map<string, number>()
+    for (const p of PRODUCTS) if (PLACE[p.id] && p.brand.toLowerCase().includes(t)) seen.set(p.brand, (seen.get(p.brand) ?? 0) + 1)
+    return [...seen].filter(([b]) => b.toLowerCase() !== t).slice(0, 8)
+  }, [t])
+  // aisles: every signed run of shelves inside the walk-in stores
+  const aisles = useMemo(() => (t ? Object.values(HALLS).flatMap((h) => h.runs.map((r) => ({ hall: h.id, sign: r.sign, first: r.products[0] })))
+    .filter((a) => `${a.sign} ${STORE_BY_ID[a.hall]?.name ?? ''}`.toLowerCase().includes(t)).slice(0, 6) : []), [t])
+  const head = 'mb-2 text-micro font-semibold uppercase tracking-[0.08em] text-ink-2'
   return (
     <div className="flex flex-col gap-3 pb-2">
       <label className="flex h-12 items-center gap-2 rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
@@ -85,7 +96,7 @@ function SearchPanel() {
       )}
       {products.length > 0 && (
         <section>
-          <div className="mb-2 text-micro font-semibold uppercase tracking-[0.08em] text-ink-2">Products · tap to go to the shelf</div>
+          <div className={head}>Products · tap to go to the shelf</div>
           <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
             {products.map((p) => (
               <button key={p.id} onClick={() => useMall.getState().seekProduct(p.id, 'preview')} className="flex w-full items-center gap-3 py-2 text-left">
@@ -100,12 +111,44 @@ function SearchPanel() {
           </div>
         </section>
       )}
-      {(stores.length > 0 || !products.length) && (
-        <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
-          {stores.length ? stores.map((st) => <StoreRow key={st.id} st={st} onGo={() => go(st)} />) : (
-            <p className="py-4 text-support text-ink-2">Nothing matches “{q}”. Try milk, bread, Croma or beauty.</p>
-          )}
-        </div>
+      {brands.length > 0 && (
+        <section>
+          <div className={head}>Brands</div>
+          <div className="flex flex-wrap gap-2">
+            {brands.map(([b, n]) => (
+              <button key={b} onClick={() => setQ(b)} className="flex h-9 items-center gap-2 rounded-full bg-surface px-3 text-xs font-medium shadow-[var(--shadow-soft)]">
+                {b}<span className="text-ink-3 tnum">{n}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {(stores.length > 0 || (!products.length && !brands.length && !aisles.length)) && (
+        <section>
+          {t && <div className={head}>Stores · tap and NEU CART takes you there</div>}
+          <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
+            {stores.length ? stores.map((st) => <StoreRow key={st.id} st={st} onGo={() => go(st)} />) : (
+              <p className="py-4 text-support text-ink-2">Nothing matches “{q}”. Try milk, bread, Croma or beauty.</p>
+            )}
+          </div>
+        </section>
+      )}
+      {aisles.length > 0 && (
+        <section>
+          <div className={head}>Aisles</div>
+          <div className="divide-y divide-soft rounded-2xl bg-surface px-4 shadow-[var(--shadow-soft)]">
+            {aisles.map((a) => (
+              <button key={a.hall + a.sign} onClick={() => useMall.getState().seekProduct(a.first)} className="flex w-full items-center gap-3 py-3 text-left">
+                <MapPin size={18} className="shrink-0 text-purple-ink" />
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block truncate text-product font-semibold">{a.sign.charAt(0) + a.sign.slice(1).toLowerCase()}</span>
+                  <span className="text-support text-ink-2">{STORE_BY_ID[a.hall]?.name}</span>
+                </span>
+                <ArrowRight size={18} className="text-ink-3" />
+              </button>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )
@@ -316,6 +359,7 @@ export function Panels() {
   const close = useMall.getState().close
   const title =
     panel?.kind === 'directory' ? 'Mall directory'
+    : panel?.kind === 'map' ? 'Mall map'
     : panel?.kind === 'search' ? 'Search'
     : panel?.kind === 'wallet' ? 'NeuCoins'
     : panel?.kind === 'profile' ? 'You'
@@ -333,6 +377,7 @@ export function Panels() {
     <Sheet open={!!panel && panel.kind !== 'cart'} onClose={close} title={title}>
       <div className={cx(panel?.kind === 'ad' && 'pt-1')}>
         {panel?.kind === 'directory' && <Directory />}
+        {panel?.kind === 'map' && <MallMap initial={panel.storeId} />}
         {panel?.kind === 'search' && <SearchPanel />}
         {panel?.kind === 'wallet' && <RewardsWallet />}
         {panel?.kind === 'profile' && <ProfilePanel />}

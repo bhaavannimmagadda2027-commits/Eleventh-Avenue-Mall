@@ -10,6 +10,7 @@ import { makeProductObject } from '../../lib/productArt'
 import { INTERIORS, activeCart, cartCount, currentMall, inr, toPay, useMall, type Location } from '../../state/useMall'
 import type { CartLine } from '../../state/useMall'
 import { BED_Y, buildNeuCart } from './NeuCart'
+import { planRoute, type Pt } from '../../lib/route'
 
 const CAM_H = 2.2 // eye height behind the cart
 const CART_AHEAD = 2.3 // cart distance in front of the camera
@@ -20,8 +21,6 @@ const PHONE_PITCH = -0.3
 const PHONE_ATRIUM_PITCH = -0.24
 const PHONE_LIFT = 0.11 // portrait: shift the picture up so the cart clears the joystick and cart bar
 const WIDE_LIFT = 0.09 // landscape: just enough to keep the cart's display on screen
-const LANE = 4.6 // clear walking lanes either side of the atrium axis
-const CROSS_Z = [2, -11.6, -21, -40.5, -53, -63, -72, -90, -102, -120] // where the atrium axis is free to cross
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 /** dev-only: lets automated checks step frames at a fixed rate while the browser tab is in the background */
@@ -32,7 +31,6 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const yawTo = (dx: number, dz: number) => Math.atan2(-dx, -dz)
 
-type Pt = { x: number; z: number }
 type Auto = { pts: Pt[]; i: number; yawEnd: number; v: number; then?: () => void }
 type Mv = { x: number; z: number; yaw: number; v: number; turn: number; bob: number; prevV: number }
 type Flight = { o: THREE.Object3D; from: THREE.Vector3; slot: THREE.Vector3; t: number }
@@ -158,24 +156,9 @@ export function CartRig({ sun }: { sun: React.RefObject<THREE.DirectionalLight |
     const st = currentMall().stores.find((x) => x.id === s.travel!.storeId)
     if (!st) return
     const m = mv.current
-    const side = st.side
-    const pts: Pt[] = []
-    const laneX = side * LANE
-    if (Math.sign(m.x) !== side && Math.abs(m.x) > 2.2) {
-      const cz = CROSS_Z.reduce((a, b) => (Math.abs(b - m.z) < Math.abs(a - m.z) ? b : a))
-      const ownLane = Math.sign(m.x) * LANE
-      pts.push({ x: ownLane, z: m.z }, { x: ownLane, z: cz }, { x: laneX, z: cz })
-    } else if (Math.abs(m.x - laneX) > 0.4) {
-      pts.push({ x: laneX, z: m.z })
-    }
-    if (st.level === 0) {
-      pts.push({ x: laneX, z: st.z })
-      const walkIn = s.travel.enter && INTERIORS.includes(st.id)
-      auto.current = { pts, i: 0, yawEnd: -side * Math.PI / 2, v: Math.max(0, m.v), then: walkIn ? () => useMall.getState().enterStore(st.id) : undefined }
-    } else {
-      pts.push({ x: laneX, z: st.z + 6 })
-      auto.current = { pts, i: 0, yawEnd: -side * 0.9, v: Math.max(0, m.v) }
-    }
+    const { pts, yawEnd } = planRoute(m, st)
+    const walkIn = st.level === 0 && s.travel.enter && INTERIORS.includes(st.id)
+    auto.current = { pts, i: 0, yawEnd, v: Math.max(0, m.v), then: walkIn ? () => useMall.getState().enterStore(st.id) : undefined }
     useMall.getState().clearTravel()
   }), [])
 
