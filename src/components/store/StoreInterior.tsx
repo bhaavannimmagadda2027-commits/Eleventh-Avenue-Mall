@@ -11,6 +11,7 @@ import { adTex, bannerTex, canvasTex, floorTex, inlayTex, rng, skyTex } from '..
 import { leafTex } from '../mall/Greenery'
 import { productParts, tagTex, unitSize } from '../../lib/productArt'
 import { fillerFor } from '../../data/filler'
+import { SECTION_PHOTOS, type RackPhoto } from '../../data/rackPhotos'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
 import { onQuality, quality } from '../../lib/quality'
 import { registerStock } from '../../lib/shelfMotion'
@@ -218,6 +219,223 @@ function gondolaBay(bay: THREE.Group, p: Product, run: SectionRun, c: Ctx) {
         fillShelf(c.insts, p, heroW, y + t * unitSize(p)[1] * s, rows.map((r) => front - (d * s) / 2 - r * d * s * 1.03), 1, c.frame, c.R, s, Math.max(0.004, 0.02 - w * 0.05))
     } else fillMixed(c, bay, pool, p.id, W, y, room, front, y - 0.03, { span: [-heroW / 2 + 0.01, heroW / 2 - 0.01], plan: plan + 3 })
   })
+}
+
+/* ---------- racks built from a front-on photo ---------- */
+
+const photoTexs = new Map<string, THREE.Texture>()
+const photoMats = new Map<string, THREE.MeshBasicMaterial>()
+/** The photo is shown exactly as shot: unlit and outside tone mapping. */
+const photoMat = (src: string) => {
+  let m = photoMats.get(src)
+  if (!m) {
+    const t = new THREE.TextureLoader().load(src)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 8
+    photoTexs.set(src, t)
+    photoMats.set(src, (m = new THREE.MeshBasicMaterial({ map: t, toneMapped: false })))
+  }
+  return m
+}
+const flatMats = new Map<string, THREE.MeshBasicMaterial>()
+const flat = (color: string) => flatMats.get(color) ?? flatMats.set(color, new THREE.MeshBasicMaterial({ color, toneMapped: false })).get(color)!
+const packMats = new Map<string, THREE.MeshBasicMaterial>()
+/** Packs: the photo with face shading in the vertex colours. Shaped items are cut on the photo's alpha. */
+const packMat = (src: string, cut: boolean) => {
+  const k = src + cut
+  let m = packMats.get(k)
+  if (!m) {
+    photoMat(src)
+    m = new THREE.MeshBasicMaterial({ map: photoTexs.get(src)!, vertexColors: true, toneMapped: false, ...(cut ? { alphaTest: 0.3, side: THREE.DoubleSide } : {}) })
+    packMats.set(k, m)
+  }
+  return m
+}
+const restMats = new Map<string, THREE.MeshBasicMaterial>()
+/** Whatever the cut-out did not build as a pack (alpha 255 in the photo), drawn flat in line with the pack fronts. */
+const restMat = (src: string) => {
+  let m = restMats.get(src)
+  if (!m) {
+    photoMat(src)
+    restMats.set(src, (m = new THREE.MeshBasicMaterial({ map: photoTexs.get(src)!, alphaTest: 0.75, toneMapped: false })))
+  }
+  return m
+}
+const HIT = new THREE.MeshBasicMaterial({ visible: false })
+
+/** Quads gathered into one mesh: position, photo uv and a grey shade per vertex. */
+class Quads {
+  p: number[] = []; uv: number[] = []; c: number[] = []; i: number[] = []
+  /** corners a b c d counter-clockwise seen from the front, with their uvs */
+  add(v: number[][], uv: number[][], shade: number) {
+    const n = this.p.length / 3
+    v.forEach((q, k) => { this.p.push(q[0], q[1], q[2]); this.uv.push(uv[k][0], uv[k][1]); this.c.push(shade, shade, shade) })
+    this.i.push(n, n + 1, n + 2, n, n + 2, n + 3)
+  }
+  mesh(m: THREE.Material) {
+    if (!this.i.length) return null
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3))
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2))
+    g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3))
+    g.setIndex(this.i)
+    g.computeBoundingSphere()
+    const o = new THREE.Mesh(g, m)
+    o.userData.keep = true // keeps the shade, which merging would drop
+    return o
+  }
+}
+
+/**
+ * One rack rebuilt in 3D from its photo: every shelf row of the photo stands recessed on a real shelf board,
+ * the board fronts carry the photo's own shelf-edge pixels, and the oak frame wraps the sides and top.
+ * Head-on it reads exactly as the photo; from an angle the shelves have depth.
+ */
+function photoBay(bay: THREE.Group, p: Product, ph: RackPhoto, run: SectionRun, c: Ctx) {
+  const W = run.bay, D = c.hall.depth, TOP = 2.45
+  // the photo is never stretched: it fits the bay at its own proportions
+  const s = Math.min(W / ph.w, (TOP - 0.02) / ph.h)
+  const H = ph.h * s, PW = ph.w * s
+  const base = Math.max(0.02, Math.min(0.05, TOP - H))
+  const front = D / 2 - 0.02
+  const solid3d = !!ph.packs?.length
+  const back = front - (solid3d ? 0.5 : 0.1) // the back panel of each shelf row
+  const Y = (py: number) => base + (ph.h - py) * s
+  const X = (px: number) => -PW / 2 + px * s
+  const photo = photoMat(ph.src)
+  const oak = flat(ph.oak), shelf = flat(ph.shelf)
+  const under = flat(new THREE.Color(ph.shelf).multiplyScalar(0.72).getStyle())
+
+  /** a piece of the photo, pixel rect [x0,y0]-[x1,y1], facing the aisle at depth z */
+  const piece = (x0: number, y0: number, x1: number, y1: number, z: number, id?: string | null) => {
+    const g = new THREE.PlaneGeometry((x1 - x0) * s, (y1 - y0) * s)
+    const u0 = x0 / ph.w, u1 = x1 / ph.w, v0 = 1 - y1 / ph.h, v1 = 1 - y0 / ph.h
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v1, u1, v1, u0, v0, u1, v0], 2))
+    const m = new THREE.Mesh(g, photo)
+    m.position.set((X(x0) + X(x1)) / 2, (Y(y0) + Y(y1)) / 2, z)
+    if (id) { m.userData.productId = id; m.userData.keep = true }
+    bay.add(m)
+    return m
+  }
+  /** a flat horizontal board face between the packs and the shelf front */
+  const board = (y: number, m: THREE.Material, up: boolean) => {
+    const b = plane(PW, front - back, m, bay)
+    b.rotation.x = up ? -Math.PI / 2 : Math.PI / 2
+    b.position.set(0, y, (front + back) / 2)
+  }
+  const depth = front - back + 0.02, mid = (front + back) / 2
+
+  // back, plinth and any oak the photo does not cover, so the rack is solid from every side
+  box(W, TOP, 0.04, GONDOLA_BACK(), 0, TOP / 2, -D / 2 + 0.02, bay)
+  box(W, base, D - 0.02, oak, 0, base / 2, -0.01, bay)
+  if (W - PW > 0.004) [-1, 1].forEach((e) => box((W - PW) / 2, base + H, depth, oak, e * (W + PW) / 4, (base + H) / 2, mid, bay))
+  const [fl, fr, ft] = ph.frame
+  ;[[X(0), Math.max(fl, 8)], [X(ph.w - Math.max(fr, 8)), Math.max(fr, 8)]].forEach(([x, wpx]) => box(wpx * s, H, depth, oak, x + (wpx * s) / 2, base + H / 2, mid, bay))
+  if (ft > 0) {
+    box(PW, ft * s, depth, oak, 0, Y(ft / 2), mid, bay)
+    board(Y(ft), under, false)
+  }
+
+  // the product blocks of one row, so a tap opens what was tapped
+  const L = fl, R = ph.w - fr
+  const rowBlocks = (k: number): [number, number, string | null][] => {
+    if (ph.blocks) return ph.blocks[k] ?? []
+    const order = ph.order ?? run.products
+    const step = (R - L) / order.length
+    return order.map((id, i) => [L + i * step, L + (i + 1) * step, id])
+  }
+  const row = (top: number, bottom: number, k: number) => {
+    if (bottom - top < 2) return
+    if (solid3d) {
+      // a plain back panel, and an invisible face per product block at the front that takes the taps
+      const bp = plane(PW, (bottom - top) * s, flat(ph.bg ?? ph.shelf), bay)
+      bp.position.set(0, (Y(top) + Y(bottom)) / 2, back)
+      piece(L, top, R, bottom, front - 0.03).material = restMat(ph.src)
+      for (const [x0, x1, id] of rowBlocks(k)) {
+        if (id === null) continue
+        const t = plane((x1 - x0) * s, (bottom - top) * s, HIT, bay)
+        t.position.set((X(x0) + X(x1)) / 2, (Y(top) + Y(bottom)) / 2, front - 0.012)
+        t.userData.productId = id ?? p.id
+        t.userData.keep = true
+      }
+      return
+    }
+    let x = L
+    for (const [x0, x1, id] of rowBlocks(k)) {
+      if (x0 > x) piece(x, top, x0, bottom, back)
+      piece(Math.max(x, x0), top, x1, bottom, back, id === undefined ? p.id : id)
+      x = x1
+    }
+    if (x < R) piece(x, top, R, bottom, back)
+  }
+  ph.lips.forEach(([a, b], k) => {
+    row(k === 0 ? ft : ph.lips[k - 1][1], a, k)
+    // the shelf board: photo pixels on its front edge, plain faces on top and below
+    piece(L, a, R, b, front)
+    board(Y(a), shelf, true)
+    if (b < ph.h) board(Y(b), under, false)
+  })
+  // whatever stands below the last shelf, or the whole picture when the fixture has no shelves
+  const last = ph.lips.length ? ph.lips[ph.lips.length - 1][1] : ft
+  row(last, ph.h, ph.lips.length)
+  if (solid3d) packs3d(bay, ph, { s, X, Y, zf: front - 0.03, zb: back + 0.01 })
+}
+
+/**
+ * Every item cut from the photo becomes a solid: boxes and pouches as boxes, bottles, jars and heaps as round tubs.
+ * The front face is the photo itself, so head-on the rack reads exactly as shot; the sides and top stretch the
+ * item's own edge pixels back, and each facing repeats two or three deep like stock on a real shelf.
+ */
+function packs3d(bay: THREE.Group, ph: RackPhoto, o: { s: number; X: (px: number) => number; Y: (py: number) => number; zf: number; zb: number }) {
+  const { s, X, Y, zf, zb } = o
+  const U = (px: number) => px / ph.w, V = (py: number) => 1 - py / ph.h
+  const solid = new Quads(), cut = new Quads()
+  const room = zf - zb
+  for (const [, x0, x1, y0, y1, round] of ph.packs!) {
+    const w = (x1 - x0) * s, h = (y1 - y0) * s
+    const xa = X(x0), xb = X(x1), yt = Y(y0), yb = Y(y1)
+    const u0 = U(x0), u1 = U(x1), vt = V(y0), vb = V(y1)
+    if (!round) {
+      const d = Math.min(0.16, Math.max(0.03, Math.min(w * 0.7, h * 0.6)))
+      const n = Math.max(1, Math.min(3, Math.floor(room / (d + 0.006))))
+      const ul = U(x0 + 2), ur = U(x1 - 3), vtop = V(y0 + 2)
+      for (let r = 0; r < n; r++) {
+        const zF = zf - r * (d + 0.006), zB = zF - d
+        solid.add([[xa, yb, zF], [xb, yb, zF], [xb, yt, zF], [xa, yt, zF]], [[u0, vb], [u1, vb], [u1, vt], [u0, vt]], 1)
+        solid.add([[xa, yb, zB], [xa, yb, zF], [xa, yt, zF], [xa, yt, zB]], [[ul, vb], [ul, vb], [ul, vt], [ul, vt]], 0.8)
+        solid.add([[xb, yb, zF], [xb, yb, zB], [xb, yt, zB], [xb, yt, zF]], [[ur, vb], [ur, vb], [ur, vt], [ur, vt]], 0.8)
+        solid.add([[xa, yt, zF], [xb, yt, zF], [xb, yt, zB], [xa, yt, zB]], [[u0, vtop], [u1, vtop], [u1, vtop], [u0, vtop]], 0.93)
+      }
+    } else {
+      // a round item: the photo wraps the front half and mirrors round the back, cut to its outline
+      const rx = w / 2, rz = Math.min(rx, 0.1), cx = (xa + xb) / 2
+      const n = Math.max(1, Math.min(3, Math.floor(room / (2 * rz + 0.006))))
+      const SEG = 12
+      const capV = V(y0 + (y1 - y0) * 0.12)
+      for (let r = 0; r < n; r++) {
+        const cz = zf - rz - r * (2 * rz + 0.006)
+        const pt = (a: number) => [cx + rx * Math.sin(a), cz + rz * Math.cos(a)]
+        const uu = (a: number) => u0 + ((Math.sin(a) + 1) / 2) * (u1 - u0)
+        for (let k = 0; k < SEG; k++) {
+          const a = -Math.PI + (k / SEG) * 2 * Math.PI, b = a + (2 * Math.PI) / SEG
+          const [ax, az] = pt(a), [bx, bz] = pt(b)
+          const shade = 0.72 + 0.28 * Math.max(0, Math.cos((a + b) / 2))
+          cut.add([[ax, yb, az], [bx, yb, bz], [bx, yt, bz], [ax, yt, az]], [[uu(a), vb], [uu(b), vb], [uu(b), vt], [uu(a), vt]], shade)
+        }
+        // heaps and wide tubs get a lid; bottles keep their own outline at the top
+        if (w > h * 0.6)
+          for (let k = 0; k < SEG; k += 2) {
+            const a = -Math.PI + (k / SEG) * 2 * Math.PI, m = a + Math.PI / SEG, b = a + (2 * Math.PI) / SEG
+            const [ax, az] = pt(a), [mx, mz] = pt(m), [bx, bz] = pt(b)
+            const uc = (u0 + u1) / 2
+            cut.add([[cx, yt, cz], [ax, yt, az], [mx, yt, mz], [bx, yt, bz]].reverse(), [[uc, capV], [uc, capV], [uc, capV], [uc, capV]], 0.95)
+          }
+      }
+    }
+  }
+  const a = solid.mesh(packMat(ph.src, false)), b = cut.mesh(packMat(ph.src, true))
+  if (a) bay.add(a)
+  if (b) bay.add(b)
 }
 
 /** Glass-door chiller: five glass shelves, back-lit, stocked to the doors. */
@@ -592,22 +810,6 @@ const bigSignTex = (raw: string, w: number, h: number, size: number, text = sent
     g.fillText(text, w / 2, h / 2 - 3)
   })
 
-const posterTex = (title: string, sub: string, bg: string, ink: string) =>
-  canvasTex(`poster-${title}`, 512, 736, (g, w, h) => {
-    g.fillStyle = bg; g.fillRect(0, 0, w, h)
-    g.fillStyle = 'rgba(255,255,255,0.16)'; g.beginPath(); g.arc(w / 2, h * 0.62, 190, 0, 7); g.fill()
-    g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle'
-    let s = 76; g.font = F(700, s)
-    while (g.measureText(title).width > w * 0.86) { s -= 2; g.font = F(700, s) }
-    g.fillText(title, w / 2, h * 0.16)
-    g.font = F(500, 30); g.fillText(sub, w / 2, h * 0.26)
-    // a plain bottle, no label artwork
-    g.fillStyle = '#F2B632'; g.fillRect(w / 2 - 70, h * 0.48, 140, 270)
-    g.fillRect(w / 2 - 28, h * 0.4, 56, 70)
-    g.fillStyle = '#B5301F'; g.fillRect(w / 2 - 34, h * 0.37, 68, 28)
-    g.fillStyle = '#FFF6DF'; g.fillRect(w / 2 - 70, h * 0.6, 140, 96)
-  })
-
 function buildAtrium(g: THREE.Group, hall: Hall) {
   const { ox, half, entranceZ, backZ } = hall
   const L = entranceZ - backZ, zc = (entranceZ + backZ) / 2
@@ -699,15 +901,15 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
     })
   }
 
-  // oil and staples posters on the open stretch of the right wall
+  // brand campaign posters on the open stretch of the right wall: photographs, lit like a backlit lightbox
   ;[
-    { z: -26.8, tex: posterTex('Gold Winner', 'Refined sunflower oil', '#C8201C', '#FFF3D6') },
-    { z: -30.4, tex: posterTex('Tata Sampann', 'Dals, spices and more', '#1F4E8C', '#FFFFFF') },
-  ].forEach(({ z, tex }) => {
-    const p = plane(2.5, 3.6, basic(tex, { fog: false }), up)
+    { z: -26.8, src: '/ads/gold-winner.jpg' },
+    { z: -30.4, src: '/ads/tata-sampann.jpg' },
+  ].forEach(({ z, src }) => {
+    const p = plane(2.4, 3.6, photoMat(src), up)
     p.rotation.y = -Math.PI / 2
     p.position.set(ox + half - 0.08, 1.9, z)
-    box(0.05, 3.7, 2.6, dark, ox + half - 0.04, 1.9, z, up)
+    box(0.05, 3.72, 2.52, dark, ox + half - 0.04, 1.9, z, up)
   })
 
   // trees on the first floor gallery, clear of the driving aisle
@@ -745,7 +947,7 @@ function buildAtrium(g: THREE.Group, hall: Hall) {
 }
 
 /** A produce island on the aisle centre line: tilted crates down both long sides. */
-function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[]) {
+function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[], ad?: string) {
   const { ox } = c.hall
   const isl = new THREE.Group()
   isl.position.set(ox, 0, z)
@@ -754,6 +956,21 @@ function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[]) {
   box(0.88, 0.44, 3.0, OAK_DEEP(), 0, 0.3, 0, isl)
   box(0.34, 0.84, 2.92, OAK_DEEP(), 0, 0.46, 0, isl)
   box(0.38, 0.03, 2.96, OAK(), 0, 0.885, 0, isl)
+  if (ad) {
+    // a double-sided header board on the riser, the campaign photo cropped to a wide band on both faces
+    const BW = 2.5, BH = 1.4, y = 1.0 + BH / 2
+    box(0.06, BH + 0.08, BW + 0.08, OAK(), 0, y, 0, isl)
+    ;[-0.9, 0.9].forEach((t) => box(0.04, 0.12, 0.04, M.alu(), 0, 0.96, t, isl))
+    const cut = (1 - (1536 / 1024) / (BW / BH)) / 2 // crop a 3:2 photo to the board's shape
+    ;[-1, 1].forEach((s) => {
+      const geo = new THREE.PlaneGeometry(BW, BH)
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1 - cut, 1, 1 - cut, 0, cut, 1, cut], 2))
+      const face = new THREE.Mesh(geo, photoMat(ad))
+      face.rotation.y = s * Math.PI / 2
+      face.position.set(s * 0.032, y, 0)
+      isl.add(face)
+    })
+  }
   ;[-1, 1].forEach((side) => {
     for (let t = -1.44; t < 1.46; t += 0.105) box(0.012, 0.4, 0.078, OAK(), side * 0.446, 0.29, t, isl)
     for (let k = 0; k < 4; k++) {
@@ -771,6 +988,17 @@ function produceIsland(g: THREE.Group, c: Ctx, z: number, ids: string[]) {
 }
 
 /* ---------- the hall ---------- */
+
+/** ChatGPT campaign photos for the far end of each wall (public/ads), by hall and side. */
+const WALL_ADS: Record<string, Partial<Record<-1 | 1, string>>> = {
+  bigbasket: { [-1]: '/ads/bb-royal.jpg' },
+  palette: { [-1]: '/ads/vana-botanicals.jpg', [1]: '/ads/saanjh.jpg' },
+  croma: { [-1]: '/ads/pulse-audio.jpg', [1]: '/ads/nimbus.jpg' },
+  zudio: { [-1]: '/ads/zudio-school.jpg', [1]: '/ads/zudio-summer.jpg' },
+  'westside-home': { [-1]: '/ads/westside-table.jpg', [1]: '/ads/westside-bedroom.jpg' },
+  irth: { [-1]: '/ads/irth-bags.jpg', [1]: '/ads/irth-eyewear.jpg' },
+  sampann: { [-1]: '/ads/sampann-spices.jpg', [1]: '/ads/tata-salt.jpg' },
+}
 
 function buildHall(hall: Hall) {
   const g = new THREE.Group()
@@ -886,6 +1114,8 @@ function buildHall(hall: Hall) {
       g.add(bay)
       bay.updateMatrix()
       const c: Ctx = { hall, insts, R, frame: bay.matrix.clone() }
+      const ph = SECTION_PHOTOS[`${hall.id}/${run.section}`]
+      if (ph) { photoBay(bay, p, ph, run, c); return }
       switch (run.fixture) {
         case 'crates': crateBay(bay, p, run, c, run.section === 'vegetables'); break
         case 'chiller': chillerBay(bay, p, run, c, i === run.products.length - 1); break
@@ -903,11 +1133,26 @@ function buildHall(hall: Hall) {
     })
   })
 
+  // campaign posters on the bare wall between the last fixture and the back wall
+  ;([-1, 1] as const).forEach((s) => {
+    const src = WALL_ADS[hall.id]?.[s]
+    const runs = hall.runs.filter((r) => r.side === s)
+    if (!src || !runs.length) return
+    const end = Math.min(...runs.map(runEnd)), gap = end - backZ
+    const w = Math.min(2.0, gap - 0.7), h = w * 1.5
+    if (w < 1.2) return
+    const z = (end + backZ) / 2, y = 0.3 + h / 2
+    box(0.04, h + 0.1, w + 0.1, mat('#C8AE88', { roughness: 0.5 }), ox + s * (half - 0.07), y, z, g)
+    const p = plane(w, h, photoMat(src), g)
+    p.rotation.y = -s * Math.PI / 2
+    p.position.set(ox + s * (half - 0.095), y, z)
+  })
+
   if (hall.atrium) {
     const c: Ctx = { hall, insts, R, frame: new THREE.Matrix4() }
-    produceIsland(g, c, -6, ['apple', 'orange', 'tomato', 'capsicum'])
-    produceIsland(g, c, -13, ['banana', 'pomegranate', 'carrot', 'onion'])
-    produceIsland(g, c, -22, ['potato', 'broccoli', 'apple', 'tomato'])
+    produceIsland(g, c, -6, ['apple', 'orange', 'tomato', 'capsicum'], '/ads/fresho-fruit.jpg')
+    produceIsland(g, c, -13, ['banana', 'pomegranate', 'carrot', 'onion'], '/ads/fresho-veg.jpg')
+    produceIsland(g, c, -22, ['potato', 'broccoli', 'apple', 'tomato'], '/ads/tata-tea.jpg')
   }
 
   // a small double-sided digital display hanging where the first section meets the next
